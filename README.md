@@ -2,7 +2,6 @@
 
 A modern, high-performance Point of Sale (POS) application built with React and Electron. Designed for speed, reliability, and a premium user experience.
 
-![Preview](https://via.placeholder.com/800x450?text=Smart+Cashier+Preview)
 
 ## ✨ Key Features
 
@@ -35,7 +34,7 @@ A modern, high-performance Point of Sale (POS) application built with React and 
 
 1. Clone the repository:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/rapirawr/smart-cashier.git
    cd kasir
    ```
 

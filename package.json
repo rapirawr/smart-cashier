@@ -1,7 +1,7 @@
 {
   "name": "smart-cashier",
   "private": true,
-  "version": "1/0",
+  "version": "1.0.6",
   "type": "module",
   "main": "electron.cjs",
   "scripts": {
@@ -13,7 +13,7 @@
     "desktop": "cross-env IS_DEV=true wait-on http://localhost:5173 && npm run electron:dev",
     "server": "node server.cjs",
     "dist": "vite build && electron-builder --win"
-  },
+  },  
   "dependencies": {
     "dexie": "^3.2.4",
     "react": "^19.2.4",

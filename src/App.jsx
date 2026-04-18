@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react'
-import { db, seedDatabase } from './db'
+import React, { useState, useEffect, useCallback, useRef } from 'react'
+import pkg from '../package.json'
+import { db } from './db'
 import * as XLSX from 'xlsx'
 import './App.css'
 
@@ -139,7 +140,7 @@ const CustomerBoard = () => {
           <div style={{textAlign: 'left', borderTop: '2px dashed #eee', borderBottom: '2px dashed #eee', padding: '2rem 0', margin: '2rem 0'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '1rem', color: '#888'}}>
               <span>ID Transaksi:</span>
-              <span>#POS-{data.lastTransaction.id}</span>
+              <span>#transaction-{data.lastTransaction.id}</span>
             </div>
             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '1rem', color: '#888'}}>
               <span>Nama Customer:</span>
@@ -285,7 +286,7 @@ const CustomerBoard = () => {
   }
 
   if (data.customerViewMode === 'menu') {
-    const categories = ['Semua', ...new Set(data.products.map(p => p.category || 'Lainnya'))];
+    const categories = ['Semua', ...new Set(data.products.flatMap(p => (p.category || 'Lainnya').split(',').map(c => c.trim())))];
 
     return (
       <div className="pos-premium-layout" style={{height: '100vh', padding: '4rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
@@ -321,20 +322,45 @@ const CustomerBoard = () => {
         </div>
 
         <div style={{flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem', overflowY: 'auto'}} className="hide-scrollbar">
-          {data.products
-            .filter(p => selectedCategory === 'Semua' || p.category === selectedCategory)
-            .map(p => (
+          {(() => {
+            const filtered = data.products.filter(p => selectedCategory === 'Semua' || (p.category && p.category.split(',').map(c => c.trim()).includes(selectedCategory)));
+            
+            if (filtered.length === 0) {
+              return (
+                <div style={{
+                  gridColumn: '1 / -1',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  opacity: 0.2,
+                  gap: '2rem',
+                  padding: '10rem 0'
+                }}>
+                  <div style={{transform: 'scale(5)'}}>
+                    <IconBox />
+                  </div>
+                  <h2 style={{fontSize: '2.5rem', fontWeight: 800}}>Belum Ada Menu Tersedia</h2>
+                </div>
+              );
+            }
+
+            return filtered.map(p => (
               <div key={p.id} style={{background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border)', display: 'flex', gap: '1.5rem', alignItems: 'center'}}>
                 <div style={{width: '80px', height: '80px', background: 'var(--primary-soft)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: 'var(--primary)', fontWeight: 800}}>
                   {p.name.charAt(0)}
                 </div>
                 <div>
                   <div style={{fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)'}}>{p.name}</div>
-                  <div style={{fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '0.5rem'}}>{p.category}</div>
+                  <div style={{fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '0.5rem'}}>
+                    {p.category}
+                    {p.variants && <span style={{marginLeft: '0.8rem', color: 'var(--primary)', fontWeight: 700, background: 'var(--primary-soft)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.9rem'}}>• {p.variants}</span>}
+                  </div>
                   <div style={{fontSize: '1.8rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {p.price.toLocaleString()}</div>
                 </div>
               </div>
-            ))}
+            ));
+          })()}
         </div>
       </div>
     );
@@ -362,10 +388,13 @@ const CustomerBoard = () => {
             <h2 style={{fontSize: '2rem', fontWeight: 600, marginTop: '2rem'}}>Menunggu Pesanan...</h2>
           </div>
         ) : (
-          data.cart.map(item => (
-            <div key={item.id} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border)'}}>
+          data.cart.map((item, idx) => (
+            <div key={`${item.id}-${idx}`} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border)'}}>
               <div>
-                <div style={{fontSize: '2.5rem', fontWeight: 700, color: 'var(--text-main)'}}>{item.name}</div>
+                <div style={{fontSize: '2.5rem', fontWeight: 700, color: 'var(--text-main)'}}>
+                  {item.name}
+                  {item.selectedVariant && <span style={{fontSize: '1.5rem', color: 'var(--primary)', marginLeft: '1rem'}}>({item.selectedVariant})</span>}
+                </div>
                 <div style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>{item.qty} x Rp {item.price.toLocaleString()}</div>
               </div>
               <div style={{fontSize: '2.5rem', fontWeight: 800, color: 'var(--primary)'}}>
@@ -414,6 +443,53 @@ function App() {
   const [isLoadingQR, setIsLoadingQR] = useState(false);
   const [customerViewMode, setCustomerViewMode] = useState('cart');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState(null);
+  const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+
+  const checkUpdate = useCallback(async (manual = false) => {
+    if (manual) setIsCheckingUpdate(true);
+    try {
+      // Menggunakan GitHub API untuk mengecek release terbaru
+      const response = await fetch('https://api.github.com/repos/rapirawr/smart-cashier/releases/latest', {
+        headers: {
+          'Accept': 'application/vnd.github.v3+json'
+        }
+      }).catch(() => null);
+
+      if (response && response.ok) {
+        const data = await response.json();
+        if (data && data.tag_name) {
+          const latestVersion = data.tag_name.replace('v', '');
+          const currentVersion = pkg.version.replace('v', '');
+
+          // Jika versi terbaru tidak sama dengan versi sekarang (asumsi versi terbaru selalu lebih tinggi di GitHub)
+          if (latestVersion !== currentVersion) {
+            setUpdateInfo({
+              version: latestVersion,
+              downloadUrl: data.html_url,
+              changelog: data.body
+            });
+          } else if (manual) {
+            alert(`Aplikasi sudah versi terbaru (v${pkg.version})`);
+          }
+        } else if (manual) {
+          alert('Informasi versi terbaru tidak ditemukan.');
+        }
+      } else if (manual) {
+        alert('Gagal mengecek update. Pastikan koneksi internet aktif.');
+      }
+    } catch (error) {
+      console.error('Check update error:', error);
+      if (manual) alert('Terjadi kesalahan saat mengecek pembaruan.');
+    } finally {
+      if (manual) setIsCheckingUpdate(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    // Cek update otomatis saat aplikasi dibuka
+    checkUpdate();
+  }, [checkUpdate]);
 
   const fetchSettings = useCallback(async () => {
     const all = await db.settings.toArray();
@@ -515,24 +591,26 @@ function App() {
   }, [isDark]);
   
 
-  const [formData, setFormData] = useState({ name: '', price: '', stock: '' });
+  const [formData, setFormData] = useState({ name: '', price: '', stock: '', category: '', variants: '' });
   const [memberFormData, setMemberFormData] = useState({ name: '', phone: '' });
   const [editingProduct, setEditingProduct] = useState(null);
+  const [productToSelectVariant, setProductToSelectVariant] = useState(null);
 
-  const categories = ['Semua', ...new Set(products.map(p => p.category || 'Lainnya'))];
+  const categories = ['Semua', ...new Set(products.flatMap(p => (p.category || 'Lainnya').split(',').map(c => c.trim())))];
 
 
-  const addToCart = useCallback((product) => {
+  const addToCart = useCallback((product, variant = null) => {
     setCart(prev => {
-      const existing = prev.find(item => item.id === product.id);
-      if (existing) return prev.map(item => item.id === product.id ? { ...item, qty: item.qty + 1 } : item);
-      return [...prev, { ...product, qty: 1 }];
+      const existing = prev.find(item => item.id === product.id && item.selectedVariant === variant);
+      if (existing) return prev.map(item => (item.id === product.id && item.selectedVariant === variant) ? { ...item, qty: item.qty + 1 } : item);
+      return [...prev, { ...product, qty: 1, selectedVariant: variant }];
     });
+    setProductToSelectVariant(null);
   }, []);
 
-  const updateQty = useCallback((id, delta) => {
+  const updateQty = useCallback((id, variant, delta) => {
     setCart(prev => prev.map(item => {
-      if (item.id === id) {
+      if (item.id === id && item.selectedVariant === variant) {
         const newQty = Math.max(0, item.qty + delta);
         return { ...item, qty: newQty };
       }
@@ -546,7 +624,9 @@ function App() {
     await db.products.update(editingProduct.id, {
       name: editingProduct.name,
       price: parseInt(editingProduct.price),
-      stock: parseInt(editingProduct.stock)
+      stock: parseInt(editingProduct.stock),
+      category: editingProduct.category,
+      variants: editingProduct.variants
     });
     setEditingProduct(null);
     fetchProducts();
@@ -578,7 +658,7 @@ function App() {
         customerName: customerName || 'Umum',
         memberId: activeMember ? activeMember.id : null,
         paymentMethod: paymentMethod,
-        items: cart.map(i => ({ name: i.name, price: i.price, qty: i.qty }))
+        items: cart.map(i => ({ name: i.name, price: i.price, qty: i.qty, variant: i.selectedVariant }))
       };
 
       const id = await db.transactions.add(newTransaction);
@@ -662,7 +742,7 @@ function App() {
 
   useEffect(() => {
     const init = async () => {
-      await seedDatabase();
+
       fetchProducts();
       fetchSettings();
       fetchTransactions();
@@ -681,7 +761,7 @@ function App() {
 
     const dataArr = transactions.map(t => ({
       'Tanggal & Waktu': new Date(t.timestamp).toLocaleString(),
-      'ID Pesanan': `#POS-${t.id}`,
+      'ID Pesanan': `#transaction-${t.id}`,
       'Nama Pelanggan': t.customerName,
       'Status Member': t.memberId ? 'Ya' : 'Tidak',
       'Total Bayar': t.total
@@ -772,11 +852,78 @@ function App() {
               </div>
 
               <div className="product-showcase">
-                {products
-                  .filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
-                  .filter(p => selectedCategory === 'Semua' || p.category === selectedCategory)
-                  .map(p => (
-                    <div key={p.id} className="p-card-premium" onClick={() => addToCart(p)}>
+                {(() => {
+                  const filtered = products
+                    .filter(p => p.name.toLowerCase().includes(search.toLowerCase()))
+                    .filter(p => selectedCategory === 'Semua' || (p.category && p.category.split(',').map(c => c.trim()).includes(selectedCategory)));
+
+                  if (filtered.length === 0) {
+                    return (
+                      <div style={{
+                        gridColumn: '1 / -1',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        padding: '8rem 2rem',
+                        background: 'var(--bg-card)',
+                        borderRadius: '32px',
+                        border: '2px dashed var(--border)',
+                        textAlign: 'center',
+                        gap: '1.5rem'
+                      }}>
+                        <div style={{
+                          width: '80px',
+                          height: '80px',
+                          background: 'var(--primary-soft)',
+                          color: 'var(--primary)',
+                          borderRadius: '24px',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          transform: 'scale(1.5)'
+                        }}>
+                          <IconBox />
+                        </div>
+                        <div>
+                          <h3 style={{fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem'}}>
+                            {products.length === 0 ? 'Belum Ada Produk' : 'Produk Tidak Ditemukan'}
+                          </h3>
+                          <p style={{color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '300px', margin: '0 auto'}}>
+                            {products.length === 0 
+                              ? 'Silakan tambahkan produk baru di menu Stok untuk mulai berjualan.' 
+                              : `Tidak ada hasil untuk "${search}" di kategori ini.`}
+                          </p>
+                        </div>
+                        {products.length === 0 && (
+                          <button 
+                            onClick={() => setActiveTab('stock')}
+                            style={{
+                              marginTop: '1rem',
+                              padding: '0.8rem 2rem',
+                              background: 'var(--primary)',
+                              color: 'white',
+                              borderRadius: '12px',
+                              fontWeight: 700,
+                              border: 'none',
+                              cursor: 'pointer'
+                            }}
+                          >
+                            Buka Menu Stok
+                          </button>
+                        )}
+                      </div>
+                    );
+                  }
+
+                  return filtered.map(p => (
+                    <div key={p.id} className="p-card-premium" onClick={() => {
+                      if (p.variants && p.variants.trim() !== '') {
+                        setProductToSelectVariant(p);
+                      } else {
+                        addToCart(p);
+                      }
+                    }}>
                       <div className="p-avatar" style={{background: p.stock < 10 ? '#ef4444' : 'var(--primary-soft)', color: p.stock < 10 ? 'white' : 'var(--primary)'}}>
                         {p.stock < 10 ? <IconAlert /> : p.name.charAt(0)}
                       </div>
@@ -792,7 +939,8 @@ function App() {
                         </span>
                       </div>
                     </div>
-                  ))}
+                  ));
+                })()}
               </div>
             </>
           )}
@@ -825,7 +973,7 @@ function App() {
                         <div style={{fontWeight: 600}}>{new Date(t.timestamp).toLocaleString()}</div>
                         <div style={{fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700}}>{t.paymentMethod || 'Cash'}</div>
                       </td>
-                    <td style={{fontFamily: 'monospace'}}>#POS-{t.id}</td>
+                    <td style={{fontFamily: 'monospace'}}>#transaction-{t.id}</td>
                     <td style={{fontWeight: 600}}>{t.customerName} {t.memberId ? '(Member)' : ''}</td>
                     <td style={{fontWeight: 700, color: 'var(--primary)'}}>Rp {t.total.toLocaleString()}</td>
                     <td style={{textAlign: 'right', borderRadius: '0 16px 16px 0', paddingRight: '1.5rem'}}>
@@ -835,6 +983,7 @@ function App() {
                           if (confirm('Hapus transaksi ini?')) {
                             await db.transactions.delete(t.id);
                             fetchTransactions();
+                            window.location.reload();
                           }
                         }}
                       >
@@ -901,6 +1050,12 @@ function App() {
                 onChange={e => setFormData({...formData, stock: e.target.value})} 
                 required
               />
+              <input 
+                style={{flex: 1, padding: '1.2rem', fontSize: '1.1rem'}} 
+                placeholder="Varian (Pisahkan dengan koma, misal: Hot, Ice)" 
+                value={formData.variants} 
+                onChange={e => setFormData({...formData, variants: e.target.value})} 
+              />
               <button 
                 type="submit" 
                 style={{background: 'var(--primary)', color: 'white', padding: '0 2rem', fontWeight: 700}}
@@ -923,7 +1078,10 @@ function App() {
                   <tr key={p.id} style={{background: 'var(--bg-app)'}}>
                     <td style={{padding: '1.5rem', borderRadius: '16px 0 0 16px'}}>
                       <div style={{fontWeight: 700}}>{p.name}</div>
-                      <div style={{fontSize: '0.8rem', opacity: 0.6}}>{p.category || 'Tanpa Kategori'}</div>
+                      <div style={{fontSize: '0.8rem', opacity: 0.6}}>
+                        {p.category || 'Tanpa Kategori'} 
+                        {p.variants && <span style={{marginLeft: '0.5rem', color: 'var(--primary)', fontWeight: 700}}>• {p.variants}</span>}
+                      </div>
                     </td>
                     <td style={{fontWeight: 700}}>Rp {p.price.toLocaleString()}</td>
                     <td style={{color: p.stock < 10 ? '#ef4444' : 'inherit'}}>{p.stock}</td>
@@ -934,7 +1092,7 @@ function App() {
                       >
                         Edit
                       </button>
-                      <button style={{color: '#ef4444', background: '#fef2f2', padding: '0.5rem 1rem'}} onClick={async () => { if(confirm('Hapus produk ini?')) { await db.products.delete(p.id); fetchProducts(); } }}>Hapus</button>
+                      <button style={{color: '#ef4444', background: '#fef2f2', padding: '0.5rem 1rem'}} onClick={async () => { if(confirm('Hapus produk ini?')) { await db.products.delete(p.id); fetchProducts(); window.location.reload(); } }}>Hapus</button>
                     </td>
                   </tr>
                 ))}
@@ -962,6 +1120,7 @@ function App() {
               await db.members.add({ ...memberFormData });
               setMemberFormData({ name: '', phone: '' }); fetchMembers();
               alert('Member baru berhasil didaftarkan!');
+              window.location.reload();
             }}>
               <input 
                 style={{flex: 1, padding: '1.2rem', fontSize: '1.1rem', fontWeight: 600}} 
@@ -1002,7 +1161,7 @@ function App() {
                     <td style={{padding: '1.5rem', borderRadius: '16px 0 0 16px', fontWeight: 600}}>{m.name}</td>
                     <td style={{fontWeight: 700}}>{m.phone}</td>
                     <td style={{textAlign: 'right', borderRadius: '0 16px 16px 0', paddingRight: '1.5rem'}}>
-                      <button style={{color: '#ef4444', background: '#fef2f2', padding: '0.5rem 1rem'}} onClick={async () => { if(confirm('Hapus member ini?')) { await db.members.delete(m.id); fetchMembers(); } }}>Hapus</button>
+                      <button style={{color: '#ef4444', background: '#fef2f2', padding: '0.5rem 1rem'}} onClick={async () => { if(confirm('Hapus member ini?')) { await db.members.delete(m.id); fetchMembers(); window.location.reload(); } }}>Hapus</button>
                     </td>
                   </tr>
                 ))}
@@ -1013,7 +1172,19 @@ function App() {
 
         {activeTab === 'settings' && (
           <div style={{background: 'var(--bg-card)', padding: '4rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-premium)', overflowY: 'auto'}}>
-            <h2 style={{fontSize: '2.5rem', marginBottom: '3rem', fontWeight: 800}}>Pengaturan Umum</h2>
+            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem', paddingBottom: '2rem', borderBottom: '1px solid var(--border)'}}>
+              <div>
+                <h2 style={{fontSize: '2.5rem', fontWeight: 800}}>Pengaturan Umum</h2>
+                <p style={{color: 'var(--text-muted)'}}>Kelola identitas toko dan personalisasi sistem</p>
+              </div>
+              <div style={{textAlign: 'right', display: 'flex', alignItems: 'center', gap: '1.5rem'}}>
+                <div style={{textAlign: 'right'}}>
+                  <div style={{fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)'}}>Smart Cashier</div>
+                  <div style={{fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 700}}>Version {pkg.version}</div>
+                </div>
+                <img src="/logo.png" alt="Logo" style={{width: '60px', height: '60px', borderRadius: '16px', boxShadow: '0 10px 20px rgba(0,0,0,0.1)'}} />
+              </div>
+            </div>
             
             <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem'}}>
               <div style={{display: 'flex', flexDirection: 'column', gap: '2rem'}}>
@@ -1157,30 +1328,6 @@ function App() {
                 </div>
               </div>
 
-              {/* Input R G B */}
-              <div style={{display: 'flex', gap: '1rem', marginBottom: '1.5rem'}}>
-                {[
-                  { channel: 'r', label: 'R — Red', color: '#ef4444' },
-                  { channel: 'g', label: 'G — Green', color: '#22c55e' },
-                  { channel: 'b', label: 'B — Blue', color: '#3b82f6' }
-                ].map(({ channel, label, color }) => (
-                  <div key={channel} style={{display: 'flex', flexDirection: 'column', gap: '0.5rem', flex: 1}}>
-                    <label style={{fontSize: '0.8rem', fontWeight: 800, color: color, letterSpacing: '0.05em'}}>{label}</label>
-                    <input
-                      type="number"
-                      min="0" max="255"
-                      value={rgb[channel]}
-                      onChange={e => { isRgbUserChange.current = true; setRgb(prev => ({ ...prev, [channel]: Math.min(255, Math.max(0, parseInt(e.target.value) || 0)) })); }}
-                      style={{
-                        padding: '1rem', textAlign: 'center',
-                        fontFamily: 'monospace', fontWeight: 700, fontSize: '1.3rem',
-                        border: `2px solid ${color}44`, borderRadius: '12px'
-                      }}
-                    />
-                  </div>
-                ))}
-              </div>
-
               {/* Quick presets */}
               <div style={{marginTop: '1.5rem'}}>
                 <p style={{fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem'}}>PRESET CEPAT</p>
@@ -1210,6 +1357,34 @@ function App() {
                   ))}
                 </div>
               </div>
+
+              <div style={{marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid var(--border)'}}>
+                <h3 style={{fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--primary)'}}>Update Sistem</h3>
+                <div style={{background: 'var(--bg-app)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                  <div>
+                    <div style={{fontWeight: 700, fontSize: '1.1rem'}}>Cek Pembaruan Perangkat Lunak</div>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>Versi saat ini: {pkg.version}</div>
+                  </div>
+                  <button 
+                    onClick={() => checkUpdate(true)}
+                    disabled={isCheckingUpdate}
+                    style={{
+                      padding: '1rem 2rem', background: 'var(--primary-soft)', color: 'var(--primary)', 
+                      borderRadius: '12px', fontWeight: 700, border: 'none', cursor: isCheckingUpdate ? 'not-allowed' : 'pointer',
+                      opacity: isCheckingUpdate ? 0.6 : 1
+                    }}
+                  >
+                    {isCheckingUpdate ? 'Mengecek...' : 'Cek Update Sekarang'}
+                  </button>
+                </div>
+              </div>
+              
+              <button 
+                onClick={() => window.location.reload()}
+                style={{marginTop: '3rem', width: '100%', padding: '1.5rem', background: 'var(--primary)', color: 'white', borderRadius: '16px', fontWeight: 800, fontSize: '1.2rem', cursor: 'pointer', border: 'none', boxShadow: '0 10px 20px var(--primary-soft)'}}
+              >
+              REFRESH APLIKASI
+              </button>
             </div>
           </div>
         )}
@@ -1227,16 +1402,19 @@ function App() {
                 <p style={{marginTop: '1rem', fontWeight: 500}}>Belum ada pesanan</p>
               </div>
             ) : (
-              cart.map(item => (
-                <div key={item.id} className="item-row">
+               cart.map((item, idx) => (
+                <div key={`${item.id}-${idx}`} className="item-row">
                   <div style={{flex: 1}}>
-                    <div style={{fontWeight: 600}}>{item.name}</div>
+                    <div style={{fontWeight: 600}}>
+                      {item.name}
+                      {item.selectedVariant && <span style={{color: 'var(--primary)', marginLeft: '0.4rem'}}>({item.selectedVariant})</span>}
+                    </div>
                     <div style={{fontSize: '0.85rem', color: 'var(--text-muted)'}}>Rp {item.price.toLocaleString()}</div>
                   </div>
                   <div className="item-qty-pill">
-                    <button className="btn-circle" onClick={() => updateQty(item.id, -1)}>-</button>
+                    <button className="btn-circle" onClick={() => updateQty(item.id, item.selectedVariant, -1)}>-</button>
                     <span style={{fontWeight: 700, minWidth: '20px', textAlign: 'center'}}>{item.qty}</span>
-                    <button className="btn-circle" onClick={() => updateQty(item.id, 1)}>+</button>
+                    <button className="btn-circle" onClick={() => updateQty(item.id, item.selectedVariant, 1)}>+</button>
                   </div>
                 </div>
               ))
@@ -1389,7 +1567,7 @@ function App() {
               <div style={{textAlign: 'left', borderTop: '1px dashed #ccc', borderBottom: '1px dashed #ccc', padding: '1.5rem 0', margin: '1.5rem 0'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8rem'}}>
                   <span>ID Transaksi:</span>
-                  <span>#POS-{lastTransaction.id}</span>
+                  <span>#transaction-{lastTransaction.id}</span>
                 </div>
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8rem'}}>
                   <span>Nama Customer:</span>
@@ -1402,7 +1580,10 @@ function App() {
                 
                 {lastTransaction.items?.map((item, idx) => (
                   <div key={idx} style={{marginBottom: '0.5rem'}}>
-                    <div style={{fontWeight: 700}}>{item.name}</div>
+                    <div style={{fontWeight: 700}}>
+                      {item.name}
+                      {item.variant && <span style={{marginLeft: '0.3rem'}}>({item.variant})</span>}
+                    </div>
                     <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem'}}>
                       <span>{item.qty} x {item.price.toLocaleString()}</span>
                       <span>{(item.qty * item.price).toLocaleString()}</span>
@@ -1488,6 +1669,14 @@ function App() {
                   required
                 />
               </div>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                <label style={{fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)'}}>VARIAN (PISAHKAN DENGAN KOMA)</label>
+                <input 
+                  style={{padding: '1.2rem'}}
+                  value={editingProduct.variants || ''}
+                  onChange={e => setEditingProduct({...editingProduct, variants: e.target.value})}
+                />
+              </div>
               <div style={{display: 'flex', gap: '1rem', marginTop: '2rem'}}>
                 <button 
                   type="button" 
@@ -1504,6 +1693,84 @@ function App() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+      {/* Variant Selection Modal */}
+      {productToSelectVariant && (
+        <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(10px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+          <div style={{background: 'var(--bg-card)', width: '450px', padding: '3rem', borderRadius: '32px', textAlign: 'center', boxShadow: '0 30px 60px rgba(0,0,0,0.4)', border: '1px solid var(--border)'}}>
+            <div style={{width: '60px', height: '60px', background: 'var(--primary-soft)', color: 'var(--primary)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 1.5rem'}}>
+               <IconTag />
+            </div>
+            <h2 style={{fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)', marginBottom: '0.5rem'}}>Pilih Varian</h2>
+            <p style={{color: 'var(--text-muted)', marginBottom: '2.5rem'}}>{productToSelectVariant.name}</p>
+            
+            <div style={{display: 'flex', flexDirection: 'column', gap: '1rem'}}>
+              {productToSelectVariant.variants.split(',').map(variant => (
+                <button 
+                  key={variant}
+                  onClick={() => addToCart(productToSelectVariant, variant.trim())}
+                  style={{
+                    padding: '1.2rem',
+                    borderRadius: '16px',
+                    border: '1px solid var(--border)',
+                    background: 'var(--bg-app)',
+                    color: 'var(--text-main)',
+                    fontWeight: 700,
+                    fontSize: '1.1rem',
+                    cursor: 'pointer',
+                    transition: 'all 0.2s',
+                    textAlign: 'center'
+                  }}
+                  onMouseOver={(e) => { e.currentTarget.style.borderColor = 'var(--primary)'; e.currentTarget.style.color = 'var(--primary)'; }}
+                  onMouseOut={(e) => { e.currentTarget.style.borderColor = 'var(--border)'; e.currentTarget.style.color = 'var(--text-main)'; }}
+                >
+                  {variant.trim()}
+                </button>
+              ))}
+              <button 
+                onClick={() => setProductToSelectVariant(null)}
+                style={{marginTop: '1rem', padding: '1rem', background: 'transparent', color: 'var(--text-muted)', border: 'none', fontWeight: 600, cursor: 'pointer'}}
+              >
+                Kembali
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Update Notification Banner */}
+      {updateInfo && (
+        <div style={{
+          position: 'fixed', bottom: '30px', left: '100px', zIndex: 9999,
+          background: 'var(--bg-card)', color: 'var(--text-main)', padding: '1.5rem',
+          borderRadius: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
+          width: '400px', border: '2px solid var(--primary)',
+          display: 'flex', gap: '1.5rem', alignItems: 'center',
+          animation: 'slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}>
+          <div style={{width: '60px', height: '60px', background: 'var(--primary)', color: 'white', borderRadius: '18px', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0}}>
+            <IconPower />
+          </div>
+          <div style={{flex: 1}}>
+            <div style={{fontWeight: 800, fontSize: '1.1rem'}}>Update v{updateInfo.version} Tersedia!</div>
+            <div style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.8rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
+              {updateInfo.changelog || 'Pembaruan sistem terbaru untuk performa yang lebih baik.'}
+            </div>
+            <div style={{display: 'flex', gap: '0.8rem'}}>
+              <button 
+                onClick={() => window.open(updateInfo.downloadUrl)}
+                style={{flex: 1, padding: '0.6rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer'}}
+              >
+                Download
+              </button>
+              <button 
+                onClick={() => setUpdateInfo(null)}
+                style={{padding: '0.6rem 1rem', background: 'var(--bg-app)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: '8px', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer'}}
+              >
+                Nanti
+              </button>
+            </div>
           </div>
         </div>
       )}
