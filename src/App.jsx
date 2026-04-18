@@ -449,7 +449,6 @@ function App() {
   const checkUpdate = useCallback(async (manual = false) => {
     if (manual) setIsCheckingUpdate(true);
     try {
-      // Menggunakan GitHub API untuk mengecek release terbaru
       const response = await fetch('https://api.github.com/repos/rapirawr/smart-cashier/releases/latest', {
         headers: {
           'Accept': 'application/vnd.github.v3+json'
