@@ -1,0 +1,100 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+
+:root {
+  --primary: #4f46e5; /* Indigo Premium */
+  --primary-soft: #eef2ff;
+  --accent: #f59e0b; /* Golden Amber */
+  --bg-app: #fcfdfe;
+  --bg-card: #ffffff;
+  --text-main: #1e293b;
+  --text-muted: #64748b;
+  --glass: rgba(255, 255, 255, 0.7);
+  --border: rgba(226, 232, 240, 0.6);
+  --shadow-premium: 0 10px 25px -5px rgba(0, 0, 0, 0.04), 0 8px 10px -6px rgba(0, 0, 0, 0.04);
+}
+
+.dark {
+  --accent: #fbbf24;
+  --bg-app: #020617;
+  --bg-card: #0f172a;
+  --text-main: #f8fafc;
+  --text-muted: #94a3b8;
+  --glass: rgba(15, 23, 42, 0.8);
+  --border: rgba(255, 255, 255, 0.1);
+  --shadow-premium: 0 10px 25px -10px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  font-family: 'Outfit', sans-serif;
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  height: 100vh;
+  overflow: hidden;
+  transition: background-color 0.5s ease, color 0.5s ease;
+}
+
+button {
+  cursor: pointer;
+  border-radius: 14px;
+  border: none;
+  font-family: inherit;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+input {
+  font-family: inherit;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--bg-card);
+  color: var(--text-main);
+  transition: all 0.3s;
+}
+
+input:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 4px var(--primary-soft);
+}
+
+/* Sidebar Sleek */
+.premium-sidebar {
+  width: 90px;
+  background: var(--glass);
+  backdrop-filter: blur(10px);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: 2rem 0;
+  gap: 1.5rem;
+  z-index: 50;
+}
+
+.nav-link {
+  width: 50px;
+  height: 50px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 16px;
+  color: var(--text-muted);
+  background: transparent;
+}
+
+.nav-link.active {
+  background: var(--primary);
+  color: white;
+  box-shadow: 0 10px 20px -5px rgba(79, 70, 229, 0.4);
+}
+
+.nav-link:hover:not(.active) {
+  background: var(--primary-soft);
+  color: var(--primary);
+}

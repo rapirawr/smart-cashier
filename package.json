@@ -1,0 +1,65 @@
+{
+  "name": "smart-cashier",
+  "private": true,
+  "version": "1/0",
+  "type": "module",
+  "main": "electron.cjs",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "lint": "eslint .",
+    "preview": "vite preview",
+    "electron:dev": "cross-env IS_DEV=true electron .",
+    "desktop": "cross-env IS_DEV=true wait-on http://localhost:5173 && npm run electron:dev",
+    "server": "node server.cjs",
+    "dist": "vite build && electron-builder --win"
+  },
+  "dependencies": {
+    "dexie": "^3.2.4",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "xlsx": "^0.18.5",
+    "express": "^4.18.2",
+    "midtrans-client": "^1.3.1",
+    "cors": "^2.8.5"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.1",
+    "cross-env": "^10.1.0",
+    "electron": "^41.2.0",
+    "electron-builder": "^26.8.1",
+    "eslint": "^9.39.4",
+    "eslint-plugin-react-hooks": "^7.0.1",
+    "eslint-plugin-react-refresh": "^0.5.2",
+    "globals": "^17.4.0",
+    "vite": "^8.0.4",
+    "wait-on": "^9.0.5"
+  },
+  "build": {
+    "appId": "com.smart.cashier",
+    "productName": "Smart Cashier",
+    "copyright": "Copyright © 2026",
+    "directories": {
+      "output": "dist_electron"
+    },
+    "files": [
+      "dist/**/*",
+      "electron.cjs",
+      "package.json"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "public/favicon.svg"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Smart Cashier"
+    }
+  }
+}
