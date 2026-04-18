@@ -456,13 +456,12 @@ function App() {
         }
       }).catch(() => null);
 
-      if (response && response.ok) {
+      if (response && response.status === 200) {
         const data = await response.json();
         if (data && data.tag_name) {
           const latestVersion = data.tag_name.replace('v', '');
           const currentVersion = pkg.version.replace('v', '');
 
-          // Jika versi terbaru tidak sama dengan versi sekarang (asumsi versi terbaru selalu lebih tinggi di GitHub)
           if (latestVersion !== currentVersion) {
             setUpdateInfo({
               version: latestVersion,
@@ -472,11 +471,13 @@ function App() {
           } else if (manual) {
             alert(`Aplikasi sudah versi terbaru (v${pkg.version})`);
           }
-        } else if (manual) {
-          alert('Informasi versi terbaru tidak ditemukan.');
         }
       } else if (manual) {
-        alert('Gagal mengecek update. Pastikan koneksi internet aktif.');
+        if (response && response.status === 404) {
+          alert('Belum ada versi rilis yang tersedia di GitHub.');
+        } else {
+          alert('Gagal mengecek update. Pastikan koneksi internet aktif.');
+        }
       }
     } catch (error) {
       console.error('Check update error:', error);

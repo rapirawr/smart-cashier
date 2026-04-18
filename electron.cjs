@@ -17,14 +17,14 @@ function createWindow() {
     height: 800,
     minWidth: 1024,
     minHeight: 720,
-    resizable: true,
-    maximizable: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
+      sandbox: false
     },
     backgroundColor: '#020617',
-    title: 'Kasir Premium Desktop'
+    title: 'Smart Cashier Desktop',
+    show: false
   });
 
   cashierWin.maximize();
@@ -40,19 +40,35 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
+      sandbox: false
     },
     backgroundColor: '#0f172a',
-    title: 'Customer Display'
+    title: 'Customer Display',
+    show: false
   });
 
   customerWin.setMenuBarVisibility(false);
 
-  const baseUrl = isDev
-    ? 'http://localhost:5173'
-    : `file://${path.join(__dirname, 'dist/index.html')}`;
+  if (isDev) {
+    const devUrl = 'http://localhost:5173';
+    cashierWin.loadURL(devUrl);
+    customerWin.loadURL(`${devUrl}#customer-view`);
+    cashierWin.webContents.openDevTools();
+  } else {
+    const indexPath = path.join(__dirname, 'dist/index.html');
+    cashierWin.loadFile(indexPath);
+    customerWin.loadFile(indexPath, { hash: 'customer-view' });
+  }
 
-  cashierWin.loadURL(baseUrl);
-  customerWin.loadURL(`${baseUrl}#customer-view`);
+  // Show windows when they are ready to prevent flickering
+  cashierWin.once('ready-to-show', () => {
+    cashierWin.show();
+  });
+
+  // Only show customer window if it's supposed to be on (could add more logic here if needed)
+  customerWin.once('ready-to-show', () => {
+    customerWin.show();
+  });
 
   // Handle Zoom shortcuts manually for Cashier
   cashierWin.webContents.on('before-input-event', (event, input) => {
@@ -69,22 +85,20 @@ function createWindow() {
       event.preventDefault();
     }
   });
-
-  if (isDev) {
-    cashierWin.webContents.openDevTools();
-  }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
-  }
-});
-
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
   }
 });
