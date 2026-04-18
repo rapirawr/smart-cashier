@@ -4,7 +4,7 @@ import { db } from './db'
 import * as XLSX from 'xlsx'
 import './App.css'
 
-// Premium Icon Components
+//  Icon Components
 const IconStore = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" /><polyline points="9 22 9 12 15 12 15 22" /></svg>;
 const IconBox = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16Z" /><path d="m3.3 7 8.7 5 8.7-5" /><path d="M12 22V12" /></svg>;
 const IconSettings = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" /></svg>;
@@ -19,6 +19,9 @@ const IconCreditCard = () => <svg width="20" height="20" viewBox="0 0 24 24" fil
 const IconAlert = () => <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z" /><line x1="12" y1="9" x2="12" y2="13" /><line x1="12" y1="17" x2="12.01" y2="17" /></svg>;
 const IconQR = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" /><rect x="14" y="3" width="7" height="7" /><rect x="14" y="14" width="7" height="7" /><rect x="3" y="14" width="7" height="7" /><line x1="7" y1="7" x2="7.01" y2="7" /><line x1="17" y1="7" x2="17.01" y2="7" /><line x1="17" y1="17" x2="17.01" y2="17" /><line x1="7" y1="17" x2="7.01" y2="17" /></svg>;
 const IconMenu = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>;
+const IconEye = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
+const IconTrash = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
+const IconCart = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>;
 
 const CustomerBoard = () => {
   const [data, setData] = useState({ 
@@ -189,7 +192,7 @@ const CustomerBoard = () => {
           padding: '4rem', 
           borderRadius: '48px', 
           border: '1px solid var(--border)',
-          boxShadow: 'var(--shadow-premium)', 
+          boxShadow: 'var(--shadow-main)', 
           textAlign: 'center',
           maxWidth: '600px',
           width: '100%',
@@ -200,7 +203,7 @@ const CustomerBoard = () => {
         }}>
           <div>
             <h2 style={{fontSize: '3rem', fontWeight: 900, color: 'var(--text-main)', marginBottom: '1rem'}}>Pembayaran QRIS</h2>
-            <p style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>Silakan scan kode QR di bawah untuk membayar</p>
+            <p style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>Silahkan scan kode QR di bawah untuk membayar</p>
           </div>
 
           <div style={{
@@ -289,7 +292,7 @@ const CustomerBoard = () => {
     const categories = ['Semua', ...new Set(data.products.flatMap(p => (p.category || 'Lainnya').split(',').map(c => c.trim())))];
 
     return (
-      <div className="pos-premium-layout" style={{height: '100vh', padding: '4rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
+      <div className="pos-layout" style={{height: '100vh', padding: '4rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
         <header style={{marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
           <div>
             <h1 style={{fontSize: '3.5rem', fontWeight: 800, color: 'var(--text-main)'}}>{data.storeName}</h1>
@@ -367,15 +370,20 @@ const CustomerBoard = () => {
   }
 
   return (
-    <div className="pos-premium-layout" style={{height: '100vh', padding: '4rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
+    <div className="pos-layout" style={{height: '100vh', padding: '4rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
       <header style={{marginBottom: '3rem', borderBottom: '2px solid var(--border)', paddingBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
         <div>
           <h1 style={{fontSize: '3rem', fontWeight: 800, color: 'var(--text-main)'}}>{data.storeName}</h1>
           <p style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>{data.welcomeText}</p>
         </div>
-        <div style={{textAlign: 'right', background: 'var(--primary)', padding: '1rem 2rem', borderRadius: '16px', color: 'white', boxShadow: `0 10px 15px -3px ${data.themeColor}55`}}>
-          <p style={{fontSize: '1rem', fontWeight: 600, opacity: 0.8, marginBottom: '0.25rem'}}></p>
-          <h2 style={{fontSize: '2rem', fontWeight: 800}}>{data.customerName || ''}</h2>
+        <div style={{
+          textAlign: 'right', background: 'var(--primary)', padding: '1.5rem 2.5rem', 
+          borderRadius: '24px', color: 'white', 
+          boxShadow: `0 20px 40px -10px ${data.themeColor}66`,
+          border: '1px solid rgba(255,255,255,0.2)'
+        }}>
+          <p style={{fontSize: '0.9rem', fontWeight: 600, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem'}}>Pelanggan</p>
+          <h2 style={{fontSize: '2.5rem', fontWeight: 800}}>{data.customerName || 'UMUM'}</h2>
         </div>
       </header>
 
@@ -405,7 +413,7 @@ const CustomerBoard = () => {
         )}
       </div>
 
-      <footer style={{marginTop: '3rem', background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)', boxShadow: 'var(--shadow-premium)'}}>
+      <footer style={{marginTop: '3rem', background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
         <span style={{fontSize: '2rem', fontWeight: 600, color: 'var(--text-main)'}}>Total Bayar</span>
         <span style={{fontSize: '5rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {data.total.toLocaleString()}</span>
       </footer>
@@ -444,72 +452,100 @@ function App() {
   const [customerViewMode, setCustomerViewMode] = useState('cart');
   const [isProcessing, setIsProcessing] = useState(false);
   const [updateInfo, setUpdateInfo] = useState(null);
+  const [updateStatus, setUpdateStatus] = useState('available'); // available, downloading, ready
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
+  const [updateMessage, setUpdateMessage] = useState('');
+  const [toast, setToast] = useState(null);
 
-  const checkUpdate = useCallback(async (manual = false) => {
-    if (manual) setIsCheckingUpdate(true);
-    try {
-      const response = await fetch('https://api.github.com/repos/rapirawr/smart-cashier/releases/latest', {
-        headers: {
-          'Accept': 'application/vnd.github.v3+json'
-        }
-      }).catch(() => null);
-
-      if (response && response.status === 200) {
-        const data = await response.json();
-        if (data && data.tag_name) {
-          const latestVersion = data.tag_name.replace('v', '');
-          const currentVersion = pkg.version.replace('v', '');
-
-          if (latestVersion !== currentVersion) {
-            setUpdateInfo({
-              version: latestVersion,
-              downloadUrl: data.html_url,
-              changelog: data.body
-            });
-          } else if (manual) {
-            alert(`Aplikasi sudah versi terbaru (v${pkg.version})`);
-          }
-        }
-      } else if (manual) {
-        if (response && response.status === 404) {
-          alert('Belum ada versi rilis yang tersedia di GitHub.');
-        } else {
-          alert('Gagal mengecek update. Pastikan koneksi internet aktif.');
-        }
-      }
-    } catch (error) {
-      console.error('Check update error:', error);
-      if (manual) alert('Terjadi kesalahan saat mengecek pembaruan.');
-    } finally {
-      if (manual) setIsCheckingUpdate(false);
-    }
+  const showToast = useCallback((message, type = 'success') => {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 3000);
   }, []);
 
   useEffect(() => {
-    // Cek update otomatis saat aplikasi dibuka
-    checkUpdate();
-  }, [checkUpdate]);
+    // Only attempt to use electron if we're in the electron environment
+    if (window.require) {
+      const { ipcRenderer } = window.require('electron');
+      
+      ipcRenderer.on('update_available', () => {
+        setIsCheckingUpdate(false);
+        setUpdateInfo({ version: pkg.version });
+        setUpdateStatus('available');
+      });
+
+      ipcRenderer.on('update_not_available', () => {
+        setIsCheckingUpdate(false);
+        setUpdateMessage('Aplikasi sudah versi terbaru.');
+        setTimeout(() => setUpdateMessage(''), 3000);
+      });
+
+      ipcRenderer.on('update_downloaded', () => {
+        setUpdateStatus('ready');
+      });
+
+      ipcRenderer.on('update_error', () => {
+        setIsCheckingUpdate(false);
+      });
+
+      return () => {
+        ipcRenderer.removeAllListeners('update_available');
+        ipcRenderer.removeAllListeners('update_not_available');
+        ipcRenderer.removeAllListeners('update_downloaded');
+        ipcRenderer.removeAllListeners('update_error');
+      };
+    }
+  }, []);
+
+  const startUpdateDownload = () => {
+    if (window.require) {
+      const { ipcRenderer } = window.require('electron');
+      ipcRenderer.send('start_download');
+      setUpdateStatus('downloading');
+    }
+  };
+
+  const restartAndInstall = () => {
+    if (window.require) {
+      const { ipcRenderer } = window.require('electron');
+      ipcRenderer.send('restart_app');
+    }
+  };
 
   const fetchSettings = useCallback(async () => {
-    const all = await db.settings.toArray();
-    const config = {
-      storeName: 'Smart Cashier',
-      storeAddress: 'Jl. Utama No. 123',
-      taxRate: 11,
-      memberDiscount: 5,
-      themeColor: '#6366f1',
-      isCustomerDisplayOn: true,
-      welcomeText: 'Selamat Datang / Welcome',
-      qrisImage: ''
-    };
-    all.forEach(s => config[s.key] = s.value);
-    setSettings(config);
+    try {
+      const all = await db.settings.toArray();
+      const config = {
+        storeName: 'Smart Cashier',
+        storeAddress: 'Jl. Utama No. 123',
+        taxRate: 11,
+        memberDiscount: 5,
+        themeColor: '#6366f1',
+        isCustomerDisplayOn: true,
+        welcomeText: 'Selamat Datang / Welcome',
+        qrisImage: ''
+      };
+      all.forEach(s => config[s.key] = s.value);
+      setSettings(config);
+    } catch (err) {
+      console.error('Failed to fetch settings:', err);
+      if (err.name === 'DatabaseClosedError') {
+        await db.open().catch(() => {});
+      }
+    }
   }, []);
 
   const updateSetting = useCallback(async (key, value) => {
-    await db.settings.put({ key, value });
-    fetchSettings();
+    try {
+      await db.settings.put({ key, value });
+      fetchSettings();
+    } catch (err) {
+      console.error('Failed to update setting:', err);
+      if (err.name === 'DatabaseClosedError') {
+        await db.open().catch(() => {});
+        await db.settings.put({ key, value }).catch(() => {});
+        fetchSettings();
+      }
+    }
   }, [fetchSettings]);
 
   const fetchProducts = useCallback(async () => {
@@ -630,8 +666,9 @@ function App() {
     });
     setEditingProduct(null);
     fetchProducts();
-    alert('Produk berhasil diperbarui!');
-    window.location.reload();
+    setEditingProduct(null);
+    fetchProducts();
+    showToast('Produk berhasil diperbarui!');
   };
 
   const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
@@ -714,7 +751,7 @@ function App() {
         welcomeText: settings.welcomeText || 'Selamat Datang / Welcome',          
         customerName: customerName || '',
         isDark,
-        themeColor: settings.themeColor,
+        themeColor: rgbToHex(rgb.r, rgb.g, rgb.b),
         isCustomerDisplayOn: settings.isCustomerDisplayOn !== false,
         customerViewMode: customerViewMode,
         products: products,
@@ -726,7 +763,7 @@ function App() {
         storeAddress: settings.storeAddress
       });
       return () => channel.close();
-    }, [cart, activeMember, settings, customerName, isDark, customerViewMode, products, showReceipt, lastTransaction, showQRISModal]);
+    }, [cart, activeMember, settings, customerName, isDark, customerViewMode, products, showReceipt, lastTransaction, showQRISModal, rgb]);
 
   useEffect(() => {
     const findMember = async () => {
@@ -779,9 +816,9 @@ function App() {
   };
 
   return (
-    <div className="pos-premium-layout">
-      {/* Sidebar - Apple Style */}
-      <aside className="premium-sidebar">
+    <div className="pos-layout">
+      {/* Sidebar -  Branding */}
+      <aside className="app-sidebar">
         <button className={`nav-link ${activeTab === 'pos' ? 'active' : ''}`} onClick={() => setActiveTab('pos')} title="Kasir">
           <IconStore />
         </button>
@@ -824,7 +861,7 @@ function App() {
               <input 
                 type="text" 
                 placeholder="Cari produk di sini..." 
-                className="search-premium"
+                className="search-box"
                 value={search}
                 onChange={e => setSearch(e.target.value)}
               />
@@ -891,7 +928,7 @@ function App() {
                           </h3>
                           <p style={{color: 'var(--text-muted)', fontSize: '1rem', maxWidth: '300px', margin: '0 auto'}}>
                             {products.length === 0 
-                              ? 'Silakan tambahkan produk baru di menu Stok untuk mulai berjualan.' 
+                              ? 'Silahkan tambahkan produk baru di menu Stok untuk mulai berjualan.' 
                               : `Tidak ada hasil untuk "${search}" di kategori ini.`}
                           </p>
                         </div>
@@ -917,7 +954,7 @@ function App() {
                   }
 
                   return filtered.map(p => (
-                    <div key={p.id} className="p-card-premium" onClick={() => {
+                    <div key={p.id} className="product-card" onClick={() => {
                       if (p.variants && p.variants.trim() !== '') {
                         setProductToSelectVariant(p);
                       } else {
@@ -946,7 +983,7 @@ function App() {
           )}
 
           {activeTab === 'history' && (
-            <div style={{background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-premium)', overflowY: 'auto'}}>
+            <div style={{background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-main)', overflowY: 'auto'}}>
               <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem'}}>
                 <h2 style={{fontSize: '2rem'}}>Histori Penjualan</h2>
                 <button 
@@ -977,18 +1014,35 @@ function App() {
                     <td style={{fontWeight: 600}}>{t.customerName} {t.memberId ? '(Member)' : ''}</td>
                     <td style={{fontWeight: 700, color: 'var(--primary)'}}>Rp {t.total.toLocaleString()}</td>
                     <td style={{textAlign: 'right', borderRadius: '0 16px 16px 0', paddingRight: '1.5rem'}}>
-                      <button 
-                        style={{color: '#ef4444', background: '#fef2f2', padding: '0.5rem 1rem'}}
-                        onClick={async () => {
-                          if (confirm('Hapus transaksi ini?')) {
-                            await db.transactions.delete(t.id);
-                            fetchTransactions();
-                            window.location.reload();
-                          }
-                        }}
-                      >
-                        Hapus
-                      </button>
+                      <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'flex-end'}}>
+                        <button 
+                          title="Lihat Struk"
+                          style={{background: 'var(--primary-soft)', color: 'var(--primary)', width: '42px', height: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.2s'}}
+                          onClick={() => {
+                            setLastTransaction(t);
+                            setShowReceipt(true);
+                          }}
+                          onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                          onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <IconEye />
+                        </button>
+                        <button 
+                          title="Hapus Transaksi"
+                          style={{background: '#fef2f2', color: '#ef4444', width: '42px', height: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.2s'}}
+                          onClick={async () => {
+                            if (confirm('Hapus transaksi ini?')) {
+                              await db.transactions.delete(t.id);
+                              fetchTransactions();
+                              window.location.reload();
+                            }
+                          }}
+                          onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
+                          onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
+                        >
+                          <IconTrash />
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -1003,7 +1057,7 @@ function App() {
         )}
 
         {activeTab === 'stock' && (
-          <div style={{background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-premium)', overflowY: 'auto'}}>
+          <div style={{background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-main)', overflowY: 'auto'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem'}}>
               <h2 style={{fontSize: '2rem'}}>Manajemen Stok Barang</h2>
               {products.some(p => p.stock < 10) && (
@@ -1016,9 +1070,8 @@ function App() {
             <form style={{display: 'flex', gap: '1.25rem', marginBottom: '4rem'}} onSubmit={async (e) => {
               e.preventDefault();
               await db.products.add({ ...formData, price: parseInt(formData.price), stock: parseInt(formData.stock) });
-              setFormData({ name: '', price: '', stock: '', category: '' }); fetchProducts();
-              alert('Produk berhasil ditambahkan!');
-              window.location.reload();
+              setFormData({ name: '', price: '', stock: '', category: '', variants: '' }); fetchProducts();
+              showToast('Produk berhasil ditambahkan!');
             }}>
               <input 
                 style={{flex: 2, padding: '1.2rem', fontSize: '1.1rem', fontWeight: 600}} 
@@ -1102,13 +1155,13 @@ function App() {
         )}
 
         {activeTab === 'members' && (
-          <div style={{background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-premium)', overflowY: 'auto'}}>
+          <div style={{background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-main)', overflowY: 'auto'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem'}}>
               <h2 style={{fontSize: '2rem'}}>Manajemen Member</h2>
               <input 
                 type="text" 
                 placeholder="Cari nama atau nomor HP member..." 
-                className="search-premium"
+                className="search-box"
                 style={{width: '350px'}}
                 value={memberSearch}
                 onChange={e => setMemberSearch(e.target.value)}
@@ -1119,8 +1172,7 @@ function App() {
               e.preventDefault();
               await db.members.add({ ...memberFormData });
               setMemberFormData({ name: '', phone: '' }); fetchMembers();
-              alert('Member baru berhasil didaftarkan!');
-              window.location.reload();
+              showToast('Member baru berhasil didaftarkan!');
             }}>
               <input 
                 style={{flex: 1, padding: '1.2rem', fontSize: '1.1rem', fontWeight: 600}} 
@@ -1171,7 +1223,7 @@ function App() {
         )}
 
         {activeTab === 'settings' && (
-          <div style={{background: 'var(--bg-card)', padding: '4rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-premium)', overflowY: 'auto'}}>
+          <div style={{background: 'var(--bg-card)', padding: '4rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-main)', overflowY: 'auto'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem', paddingBottom: '2rem', borderBottom: '1px solid var(--border)'}}>
               <div>
                 <h2 style={{fontSize: '2.5rem', fontWeight: 800}}>Pengaturan Umum</h2>
@@ -1182,7 +1234,6 @@ function App() {
                   <div style={{fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)'}}>Smart Cashier</div>
                   <div style={{fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 700}}>Version {pkg.version}</div>
                 </div>
-                <img src="/logo.png" alt="Logo" style={{width: '60px', height: '60px', borderRadius: '16px', boxShadow: '0 10px 20px rgba(0,0,0,0.1)'}} />
               </div>
             </div>
             
@@ -1365,17 +1416,41 @@ function App() {
                     <div style={{fontWeight: 700, fontSize: '1.1rem'}}>Cek Pembaruan Perangkat Lunak</div>
                     <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>Versi saat ini: {pkg.version}</div>
                   </div>
-                  <button 
-                    onClick={() => checkUpdate(true)}
+                   <button 
                     disabled={isCheckingUpdate}
+                    onClick={() => {
+                      if (window.require) {
+                        const { ipcRenderer } = window.require('electron');
+                        ipcRenderer.send('manual_check');
+                        setIsCheckingUpdate(true);
+                      }
+                    }}
                     style={{
-                      padding: '1rem 2rem', background: 'var(--primary-soft)', color: 'var(--primary)', 
-                      borderRadius: '12px', fontWeight: 700, border: 'none', cursor: isCheckingUpdate ? 'not-allowed' : 'pointer',
-                      opacity: isCheckingUpdate ? 0.6 : 1
+                      padding: '1rem 2rem', 
+                      background: isCheckingUpdate ? 'var(--border)' : 'var(--primary-soft)', 
+                      color: isCheckingUpdate ? 'var(--text-muted)' : 'var(--primary)', 
+                      borderRadius: '12px', fontWeight: 700, border: 'none', 
+                      cursor: isCheckingUpdate ? 'not-allowed' : 'pointer',
+                      display: 'flex', alignItems: 'center', gap: '0.8rem'
                     }}
                   >
-                    {isCheckingUpdate ? 'Mengecek...' : 'Cek Update Sekarang'}
+                    {isCheckingUpdate ? (
+                      <>
+                        <div className="spinner-mini"></div>
+                        Mengecek...
+                      </>
+                    ) : 'Cek Update Sekarang'}
                   </button>
+                  {updateMessage && (
+                    <div style={{
+                      fontSize: '0.85rem', 
+                      color: 'var(--primary)', 
+                      fontWeight: 700,
+                      animation: 'fadeIn 0.3s ease-out'
+                    }}>
+                      {updateMessage}
+                    </div>
+                  )}
                 </div>
               </div>
               
@@ -1390,16 +1465,19 @@ function App() {
         )}
       </main>
 
-      {/* Checkout Sidebar Premium (Show only during POS) */}
+      {/* Checkout Sidebar  (Show only during POS) */}
       {activeTab === 'pos' && (
-        <aside className="checkout-premium" key={checkoutKey}>
+        <aside className="checkout-sidebar" key={checkoutKey}>
           <h2 style={{fontSize: '1.5rem', fontWeight: 700}}>Detail Pesanan</h2>
           
           <div className="order-list">
             {cart.length === 0 ? (
-              <div style={{textAlign: 'center', marginTop: '5rem', opacity: 0.3}}>
-                <IconStore />
-                <p style={{marginTop: '1rem', fontWeight: 500}}>Belum ada pesanan</p>
+              <div style={{textAlign: 'center', marginTop: '6rem', opacity: 0.2, animation: 'fadeIn 0.5s ease-out'}}>
+                <div style={{marginBottom: '1.5rem', display: 'flex', justifyContent: 'center'}}>
+                  <IconCart size={80} />
+                </div>
+                <p style={{fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-muted)'}}>Keranjang masih kosong</p>
+                <p style={{fontSize: '0.85rem', marginTop: '0.5rem'}}>Pilih produk di sebelah kiri untuk memulai</p>
               </div>
             ) : (
                cart.map((item, idx) => (
@@ -1474,7 +1552,10 @@ function App() {
               ].map(m => (
                 <button
                   key={m.name}
-                  onClick={() => setPaymentMethod(m.name)}
+                  onClick={() => {
+                    setPaymentMethod(m.name);
+                    if (m.name !== 'QRIS') setShowQRISModal(false);
+                  }}
                   style={{
                     padding: '1rem 0',
                     borderRadius: '16px',
@@ -1516,7 +1597,7 @@ function App() {
                  <span className="grand-total" style={{fontSize: '2.5rem'}}>Rp {total.toLocaleString()}</span>
               </div>
             </div>
-            <button className="btn-checkout-premium" onClick={handleCheckout} style={{
+            <button className="btn-checkoutsidebar" onClick={handleCheckout} style={{
               height: '80px', 
               fontSize: '1.2rem',
               background: showQRISModal ? '#22c55e' : 'var(--primary)',
@@ -1616,7 +1697,7 @@ function App() {
                 <IconPrinter /> CETAK STRUK
               </button>
               <button 
-                onClick={() => { setShowReceipt(false); window.location.reload(); }}
+                onClick={() => { setShowReceipt(false); if (activeTab === 'pos') window.location.reload(); }}
                 style={{flex: 1, padding: '1.2rem', background: '#f3f4f6', color: '#000', borderRadius: '16px', fontWeight: 700}}
               >
                 TUTUP
@@ -1626,7 +1707,7 @@ function App() {
         </div>
       )}
 
-      {/* Edit Modal Premium */}
+      {/* Edit Modal  */}
       {editingProduct && (
         <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
           <div style={{background: 'var(--bg-card)', width: '500px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'}}>
@@ -1753,17 +1834,41 @@ function App() {
             <IconPower />
           </div>
           <div style={{flex: 1}}>
-            <div style={{fontWeight: 800, fontSize: '1.1rem'}}>Update v{updateInfo.version} Tersedia!</div>
-            <div style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.8rem', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical', overflow: 'hidden'}}>
-              {updateInfo.changelog || 'Pembaruan sistem terbaru untuk performa yang lebih baik.'}
+            <div style={{fontWeight: 800, fontSize: '1.1rem'}}>
+              {updateStatus === 'available' && `Update v${updateInfo.version || ''} Tersedia!`}
+              {updateStatus === 'downloading' && 'Mengunduh Pembaruan...'}
+              {updateStatus === 'ready' && 'Pembaruan Siap Dipasang!'}
+            </div>
+            <div style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginBottom: '0.8rem'}}>
+              {updateStatus === 'available' && (updateInfo.changelog || 'Pembaruan sistem terbaru untuk performa yang lebih baik.')}
+              {updateStatus === 'downloading' && 'Mohon tunggu sebentar, aplikasi sedang mengunduh versi terbaru.'}
+              {updateStatus === 'ready' && 'Aplikasi perlu dimulai ulang untuk menerapkan pembaruan.'}
             </div>
             <div style={{display: 'flex', gap: '0.8rem'}}>
-              <button 
-                onClick={() => window.open(updateInfo.downloadUrl)}
-                style={{flex: 1, padding: '0.6rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer'}}
-              >
-                Download
-              </button>
+              {updateStatus === 'available' && (
+                <button 
+                  onClick={startUpdateDownload}
+                  style={{flex: 1, padding: '0.6rem', background: 'var(--primary)', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer'}}
+                >
+                  Download & Install
+                </button>
+              )}
+              {updateStatus === 'downloading' && (
+                <button 
+                  disabled
+                  style={{flex: 1, padding: '0.6rem', background: 'var(--primary-soft)', color: 'var(--primary)', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', opacity: 0.7}}
+                >
+                  Downloading...
+                </button>
+              )}
+              {updateStatus === 'ready' && (
+                <button 
+                  onClick={restartAndInstall}
+                  style={{flex: 1, padding: '0.6rem', background: '#22c55e', color: 'white', border: 'none', borderRadius: '8px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer'}}
+                >
+                  Restart & Update
+                </button>
+              )}
               <button 
                 onClick={() => setUpdateInfo(null)}
                 style={{padding: '0.6rem 1rem', background: 'var(--bg-app)', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: '8px', fontWeight: 600, fontSize: '0.8rem', cursor: 'pointer'}}
@@ -1772,6 +1877,26 @@ function App() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {/* Toast Notification  */}
+      {toast && (
+        <div style={{
+          position: 'fixed', top: '40px', left: '50%', transform: 'translateX(-50%)',
+          zIndex: 10000, background: 'var(--bg-card)', padding: '1rem 2rem',
+          borderRadius: '20px', boxShadow: '0 20px 40px rgba(0,0,0,0.2)',
+          border: `1px solid ${toast.type === 'success' ? '#22c55e' : '#ef4444'}`,
+          display: 'flex', alignItems: 'center', gap: '1rem',
+          animation: 'fadeIn 0.4s cubic-bezier(0.16, 1, 0.3, 1)'
+        }}>
+          <div style={{
+            width: '32px', height: '32px', borderRadius: '50%',
+            background: toast.type === 'success' ? '#22c55e' : '#ef4444',
+            color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            {toast.type === 'success' ? '✓' : '!'}
+          </div>
+          <span style={{fontWeight: 700, color: 'var(--text-main)'}}>{toast.message}</span>
         </div>
       )}
     </div>

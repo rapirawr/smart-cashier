@@ -1,9 +1,29 @@
 const { app, BrowserWindow, screen } = require('electron');
 const path = require('path');
+const { autoUpdater } = require('electron-updater');
+const { ipcMain } = require('electron');
 const isDev = process.env.IS_DEV === 'true';
 
 let cashierWin;
 let customerWin;
+
+const isFirstInstance = app.requestSingleInstanceLock();
+
+if (!isFirstInstance) {
+  app.quit();
+} else {
+  app.on('second-instance', (event, commandLine, workingDirectory) => {
+    if (cashierWin) {
+      if (cashierWin.isMinimized()) cashierWin.restore();
+      cashierWin.focus();
+    }
+  });
+
+  app.whenReady().then(() => {
+    createWindow();
+    setupAutoUpdateListeners();
+  });
+}
 
 function createWindow() {
   const displays = screen.getAllDisplays();
@@ -60,17 +80,14 @@ function createWindow() {
     customerWin.loadFile(indexPath, { hash: 'customer-view' });
   }
 
-  // Show windows when they are ready to prevent flickering
   cashierWin.once('ready-to-show', () => {
     cashierWin.show();
   });
 
-  // Only show customer window if it's supposed to be on (could add more logic here if needed)
   customerWin.once('ready-to-show', () => {
     customerWin.show();
   });
 
-  // Handle Zoom shortcuts manually for Cashier
   cashierWin.webContents.on('before-input-event', (event, input) => {
     if (input.control && input.key === '=') {
       cashierWin.webContents.setZoomLevel(cashierWin.webContents.getZoomLevel() + 0.5);
@@ -87,18 +104,59 @@ function createWindow() {
   });
 }
 
-app.whenReady().then(() => {
-  createWindow();
-
-  app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-      createWindow();
-    }
+function setupAutoUpdateListeners() {
+  autoUpdater.autoDownload = false;
+  
+  autoUpdater.on('update-available', () => {
+    if (cashierWin) cashierWin.webContents.send('update_available');
   });
+
+  autoUpdater.on('update-not-available', () => {
+    if (cashierWin) cashierWin.webContents.send('update_not_available');
+  });
+
+  autoUpdater.on('update-downloaded', () => {
+    if (cashierWin) cashierWin.webContents.send('update_downloaded');
+  });
+
+  autoUpdater.on('error', (err) => {
+    console.error('Update error:', err);
+    if (cashierWin) cashierWin.webContents.send('update_error', err.message);
+  });
+
+  setInterval(() => {
+    autoUpdater.checkForUpdatesAndNotify();
+  }, 10 * 60 * 1000);
+
+  autoUpdater.checkForUpdatesAndNotify();
+}
+
+ipcMain.on('manual_check', () => {
+  if (isDev) {
+    setTimeout(() => {
+      if (cashierWin) cashierWin.webContents.send('update_not_available');
+    }, 1500);
+  } else {
+    autoUpdater.checkForUpdatesAndNotify();
+  }
+});
+
+ipcMain.on('start_download', () => {
+  autoUpdater.downloadUpdate();
+});
+
+ipcMain.on('restart_app', () => {
+  autoUpdater.quitAndInstall();
 });
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
+  }
+});
+
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
   }
 });
