@@ -225,7 +225,7 @@ function Dashboard({ settings }) {
       </div>
 
       {/* Charts Row */}
-      <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '1.5rem'}}>
+      <div className="dashboard-grid-2-1">
         {/* Revenue Chart */}
         <div className="chart-section">
           <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
@@ -298,7 +298,7 @@ function Dashboard({ settings }) {
       </div>
 
       {/* Top Products */}
-      <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1.5rem'}}>
+      <div className="dashboard-grid-1-1">
         <div className="chart-section">
           <h3 style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}><Trophy size={20} /> Produk Terlaris</h3>
           <div className="top-products-list">
@@ -356,7 +356,7 @@ function Dashboard({ settings }) {
         background: 'linear-gradient(135deg, var(--primary), #8b5cf6)',
         border: 'none', color: 'white'
       }}>
-        <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+        <div className="revenue-card-inner">
           <div>
             <h3 style={{color: 'rgba(255,255,255,0.8)', fontSize: '1rem', marginBottom: '0.5rem', display: 'flex', alignItems: 'center', gap: '0.5rem'}}><Diamond size={18} /> Total Pendapatan Bulan Ini</h3>
             <div style={{fontSize: '3.5rem', fontWeight: 900, letterSpacing: '-0.02em'}}>

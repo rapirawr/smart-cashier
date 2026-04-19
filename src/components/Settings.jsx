@@ -14,13 +14,10 @@ function Settings({ settings, updateSetting, rgb, setRgb, isRgbUserChange, rgbTo
   ];
 
   return (
-    <div className="panel" style={{padding: 0, overflow: 'hidden'}}>
-      <div style={{display: 'flex', height: '100%'}}>
+    <div className="panel" style={{padding: 0, overflow: 'hidden', height: '100%'}}>
+      <div className="settings-layout">
         {/* Settings Sidebar */}
-        <div style={{
-          width: '280px', background: 'var(--bg-app)', borderRight: '1px solid var(--border)',
-          padding: '2rem 1rem', display: 'flex', flexDirection: 'column', gap: '0.5rem', flexShrink: 0
-        }}>
+        <div className="settings-sidebar">
           <div style={{padding: '0 1rem', marginBottom: '1.5rem'}}>
             <h2 style={{fontSize: '1.5rem', fontWeight: 800}}>Pengaturan</h2>
             <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.3rem'}}>Kelola konfigurasi sistem</p>
@@ -54,7 +51,7 @@ function Settings({ settings, updateSetting, rgb, setRgb, isRgbUserChange, rgbTo
         </div>
 
         {/* Settings Content */}
-        <div style={{flex: 1, padding: '2.5rem', overflowY: 'auto'}}>
+        <div className="settings-content">
           {activeSection === 'store' && (
             <div style={{animation: 'fadeIn 0.3s ease-out'}}>
               <h3 style={{fontSize: '1.5rem', fontWeight: 800, marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem'}}><Store /> Informasi Toko</h3>

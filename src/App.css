@@ -826,3 +826,100 @@ input:focus, select:focus, textarea:focus {
   }
 }
 
+
+/* ====================== DASHBOARD RESPONSIVE FIXES ====================== */
+.dashboard-grid-2-1 {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 1.5rem;
+}
+
+.dashboard-grid-1-1 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+}
+
+.revenue-card-inner {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .dashboard-grid-2-1,
+  .dashboard-grid-1-1 {
+    grid-template-columns: 1fr;
+  }
+  .revenue-card-inner {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .revenue-card-inner > div:last-child {
+    align-self: flex-start;
+    text-align: left !important;
+    margin-top: 1rem;
+  }
+}
+
+/* ====================== SETTINGS RESPONSIVE ====================== */
+.settings-layout {
+  display: flex;
+  height: 100%;
+}
+
+.settings-sidebar {
+  width: 280px;
+  background: var(--bg-app);
+  border-right: 1px solid var(--border);
+  padding: 2rem 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  flex-shrink: 0;
+}
+
+.settings-content {
+  flex: 1;
+  padding: 2.5rem;
+  overflow-y: auto;
+}
+
+@media (max-width: 768px) {
+  .settings-layout {
+    flex-direction: column;
+  }
+  .settings-sidebar {
+    width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    flex-direction: row;
+    overflow-x: auto;
+    padding: 1rem;
+    white-space: nowrap;
+  }
+  .settings-sidebar > div:first-child,
+  .settings-sidebar > div:last-child {
+    display: none;
+  }
+  .settings-content {
+    padding: 1.5rem;
+  }
+}
+
+.responsive-form {
+  display: flex;
+  gap: 1.25rem;
+}
+
+@media (max-width: 768px) {
+  .responsive-form {
+    flex-direction: column;
+  }
+  .responsive-form button {
+    width: 100%;
+    padding: 1.2rem !important;
+  }
+}

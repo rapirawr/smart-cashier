@@ -54,6 +54,7 @@ function App() {
   const [transactions, setTransactions] = useState([]);
   const [cart, setCart] = useState([]);
   const [search, setSearch] = useState('');
+  const [stockSearch, setStockSearch] = useState('');
   const [memberSearch, setMemberSearch] = useState('');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'pos');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
@@ -836,7 +837,7 @@ function App() {
         <div style={{
           background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px',
           boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)',
-          width: '400px', textAlign: 'center', animation: 'fadeIn 0.5s ease-out'
+          width: '90%', maxWidth: '400px', textAlign: 'center', animation: 'fadeIn 0.5s ease-out'
         }}>
           <div style={{
             width: '80px', height: '80px', background: 'var(--primary-soft)',
@@ -888,7 +889,7 @@ function App() {
         <div style={{
           background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px',
           boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)',
-          width: '400px', textAlign: 'center', animation: 'fadeIn 0.5s ease-out'
+          width: '90%', maxWidth: '400px', textAlign: 'center', animation: 'fadeIn 0.5s ease-out'
         }}>
           <h2 style={{fontSize: '2rem', fontWeight: 900, marginBottom: '0.5rem', color: 'var(--text-main)'}}>Mulai Shift</h2>
           <p style={{color: 'var(--text-muted)', marginBottom: '2rem'}}>Kasir: <span style={{fontWeight: 800, color: 'var(--primary)'}}>{activeCashier}</span></p>
@@ -1149,7 +1150,8 @@ function App() {
                   <Download size={18} /> Ekspor ke Excel (.xlsx)
                 </button>
               </div>
-              <table style={{width: '100%', borderCollapse: 'separate', borderSpacing: '0 10px'}}>
+              <div style={{overflowX: 'auto'}}>
+                <table style={{width: '100%', borderCollapse: 'separate', borderSpacing: '0 10px', minWidth: '600px'}}>
                 <thead>
                   <tr style={{textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase'}}>
                     <th style={{padding: '0 1.5rem'}}>Waktu & Metode</th>
@@ -1202,6 +1204,7 @@ function App() {
                 )}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
@@ -1228,7 +1231,14 @@ function App() {
                 </label>
               </div>
             </div>
-            <div style={{marginBottom: '2rem', display: 'flex', gap: '1rem'}}>
+            <div style={{marginBottom: '2rem', display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'center'}}>
+              <input 
+                type="text" 
+                placeholder="Cari produk di stok (Nama / Kategori)..." 
+                value={stockSearch}
+                onChange={e => setStockSearch(e.target.value)}
+                style={{flex: 1, minWidth: '250px', padding: '1rem', borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-main)', fontSize: '1rem'}}
+              />
               <button
                 onClick={() => setShowAddProduct(true)}
                 style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'1rem 2rem',background:'var(--primary)',color:'white',borderRadius:'16px',fontWeight:800,cursor:'pointer',fontSize:'1.1rem',border:'none',boxShadow:'var(--shadow-main)'}}
@@ -1254,7 +1264,8 @@ function App() {
               </button>
             </div>
             
-            <table style={{width: '100%', borderCollapse: 'separate', borderSpacing: '0 10px'}}>
+            <div style={{overflowX: 'auto'}}>
+              <table style={{width: '100%', borderCollapse: 'separate', borderSpacing: '0 10px', minWidth: '600px'}}>
               <thead>
                 <tr style={{textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase'}}>
                   <th style={{padding: '0 1.5rem'}}>Produk & Kategori</th>
@@ -1264,7 +1275,9 @@ function App() {
                 </tr>
               </thead>
               <tbody>
-                {products.map(p => (
+                {products
+                  .filter(p => p.name.toLowerCase().includes(stockSearch.toLowerCase()) || (p.category && p.category.toLowerCase().includes(stockSearch.toLowerCase())))
+                  .map(p => (
                   <tr key={p.id} style={{background: 'var(--bg-app)'}}>
                     <td style={{padding: '1.5rem', borderRadius: '16px 0 0 16px'}}>
                       <div style={{fontWeight: 700}}>{p.name}</div>
@@ -1293,6 +1306,7 @@ function App() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
@@ -1310,7 +1324,7 @@ function App() {
               />
             </div>
             
-            <form style={{display: 'flex', gap: '1.25rem', marginBottom: '4rem'}} onSubmit={async (e) => {
+            <form className="responsive-form" style={{marginBottom: '4rem'}} onSubmit={async (e) => {
               e.preventDefault();
               const { error } = await supabase.from('members').insert({ ...memberFormData });
               if (!error) {
@@ -1343,7 +1357,8 @@ function App() {
               </button>
             </form>
 
-            <table style={{width: '100%', borderCollapse: 'separate', borderSpacing: '0 10px'}}>
+            <div style={{overflowX: 'auto'}}>
+              <table style={{width: '100%', borderCollapse: 'separate', borderSpacing: '0 10px', minWidth: '600px'}}>
               <thead>
                 <tr style={{textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase'}}>
                   <th style={{padding: '0 1.5rem'}}>Nama Member</th>
@@ -1382,6 +1397,7 @@ function App() {
                 ))}
               </tbody>
             </table>
+            </div>
           </div>
         )}
 
@@ -1443,9 +1459,10 @@ function App() {
               <input 
                 type="text" 
                 placeholder="Nama Kasir" 
-                style={{width: '100%', padding: '0.7rem', fontSize: '0.9rem', borderRadius: '10px'}}
+                style={{width: '100%', padding: '0.7rem', fontSize: '0.9rem', borderRadius: '10px', }}
                 value={activeCashier}
                 onChange={e => setActiveCashier(e.target.value)}
+                disabled
               />
             </div>
             <div>
@@ -1677,7 +1694,7 @@ function App() {
       {/* Modal Cetak Struk */}
       {showReceipt && lastTransaction && (
         <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem'}}>
-          <div style={{background: 'white', color: 'black', width: '400px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', textAlign: 'center'}}>
+          <div style={{background: 'white', color: 'black', width: '90%', maxWidth: '400px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', textAlign: 'center'}}>
             <div style={{fontFamily: 'monospace'}}>
               <h2 style={{fontSize: '1.5rem', fontWeight: 800}}>{settings.store_name}</h2>
               <p style={{fontSize: '0.8rem', marginBottom: '2rem'}}>{settings.store_address}</p>
@@ -1747,7 +1764,7 @@ function App() {
       {/* Add Product Modal */}
       {showAddProduct && (
         <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-          <div style={{background: 'var(--bg-card)', width: '500px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'}}>
+          <div style={{background: 'var(--bg-card)', width: '90%', maxWidth: '500px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'}}>
             <h2 style={{fontSize: '2rem', marginBottom: '2rem'}}>Tambah Produk Baru</h2>
             <form onSubmit={handleAddProduct} style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
               <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
@@ -1829,7 +1846,7 @@ function App() {
         const summary = getShiftSummary();
         return (
           <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-            <div style={{background: 'var(--bg-card)', width: '500px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'}}>
+            <div style={{background: 'var(--bg-card)', width: '90%', maxWidth: '500px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'}}>
               <h2 style={{fontSize: '2rem', marginBottom: '0.5rem'}}>Akhiri Shift</h2>
               <p style={{color: 'var(--text-muted)', marginBottom: '2rem'}}>Kasir: <span style={{fontWeight: 800, color: 'var(--primary)'}}>{activeShift.cashierName}</span></p>
               
@@ -1892,7 +1909,7 @@ function App() {
       {/* Edit Modal  */}
       {editingProduct && (
         <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
-          <div style={{background: 'var(--bg-card)', width: '500px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'}}>
+          <div style={{background: 'var(--bg-card)', width: '90%', maxWidth: '500px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'}}>
             <h2 style={{fontSize: '2rem', marginBottom: '2rem'}}>Edit Produk</h2>
             <form onSubmit={handleUpdateProduct} style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
               <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
@@ -2016,7 +2033,7 @@ function App() {
           position: 'fixed', bottom: '30px', left: '100px', zIndex: 9999,
           background: 'var(--bg-card)', color: 'var(--text-main)', padding: '1.5rem',
           borderRadius: '24px', boxShadow: '0 20px 50px rgba(0,0,0,0.4)',
-          width: '400px', border: '2px solid var(--primary)',
+          width: '90%', maxWidth: '400px', border: '2px solid var(--primary)',
           display: 'flex', gap: '1.5rem', alignItems: 'center',
           animation: 'slideInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1)'
         }}>
@@ -2111,7 +2128,7 @@ function App() {
           <div style={{
             background: 'var(--bg-card)', padding: '2.5rem', borderRadius: '32px',
             border: '1px solid var(--border)', boxShadow: '0 30px 60px rgba(0,0,0,0.4)',
-            width: '400px', textAlign: 'center', animation: 'scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+            width: '90%', maxWidth: '400px', textAlign: 'center', animation: 'scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
           }}>
             <div style={{
               width: '64px', height: '64px', borderRadius: '20px', 
