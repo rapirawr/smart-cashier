@@ -87,6 +87,14 @@ function App() {
   const [dialog, setDialog] = useState(null); // { title, message, onConfirm, onCancel, type: 'alert' | 'confirm' | 'prompt', requiredText? }
   const [promptValue, setPromptValue] = useState('');
 
+  const [activeShift, setActiveShift] = useState(() => {
+    try { return JSON.parse(localStorage.getItem('activeShift')) || null; } catch { return null; }
+  });
+  const [shiftStartCash, setShiftStartCash] = useState('');
+  const [showEndShiftModal, setShowEndShiftModal] = useState(false);
+  const [shiftActualCash, setShiftActualCash] = useState('');
+  const [shiftNotes, setShiftNotes] = useState('');
+
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 3000);
@@ -219,6 +227,11 @@ function App() {
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
   }, [activeTab]);
+
+  useEffect(() => {
+    if (activeShift) localStorage.setItem('activeShift', JSON.stringify(activeShift));
+    else localStorage.removeItem('activeShift');
+  }, [activeShift]);
   
   // Checkout Session State
   const [customerName, setCustomerName] = useState('');
@@ -715,11 +728,85 @@ function App() {
   };
 
   const handleLogout = () => {
-    customConfirm('Ganti Kasir', 'Apakah Anda yakin ingin mengganti kasir (Log Out)?', () => {
-      setIsLoggedIn(false);
-      setActiveCashier('');
-      localStorage.removeItem('activeCashier');
-    });
+    if (activeShift) {
+      setShowEndShiftModal(true);
+    } else {
+      customConfirm('Ganti Kasir', 'Apakah Anda yakin ingin mengganti kasir (Log Out)?', () => {
+        setIsLoggedIn(false);
+        setActiveCashier('');
+        localStorage.removeItem('activeCashier');
+      });
+    }
+  };
+
+  const forceLogout = () => {
+    setIsLoggedIn(false);
+    setActiveCashier('');
+    localStorage.removeItem('activeCashier');
+  };
+
+  const getShiftSummary = () => {
+    if (!activeShift) return null;
+    const shiftTx = transactions.filter(t => 
+      t.cashier_name === activeShift.cashierName && 
+      new Date(t.timestamp) >= new Date(activeShift.startTime)
+    );
+    const totalCash = shiftTx.filter(t => t.payment_method === 'Cash').reduce((sum, t) => sum + t.total, 0);
+    const totalQRIS = shiftTx.filter(t => t.payment_method === 'QRIS').reduce((sum, t) => sum + t.total, 0);
+    const totalDebit = shiftTx.filter(t => t.payment_method === 'Debit').reduce((sum, t) => sum + t.total, 0);
+    const expectedCash = activeShift.startingCash + totalCash;
+    
+    return { totalCash, totalQRIS, totalDebit, expectedCash, transactionCount: shiftTx.length };
+  };
+
+  const handleEndShift = async () => {
+    const summary = getShiftSummary();
+    if (!summary) return;
+    
+    const actual = parseInt(shiftActualCash) || 0;
+    const difference = actual - summary.expectedCash;
+    
+    const shiftRecord = {
+      ...activeShift,
+      endTime: new Date().toISOString(),
+      expectedCash: summary.expectedCash,
+      actualCash: actual,
+      totalCash: summary.totalCash,
+      totalQRIS: summary.totalQRIS,
+      totalDebit: summary.totalDebit,
+      difference,
+      notes: shiftNotes
+    };
+
+    // Save to local Dexie DB
+    try {
+      await db.shifts.add(shiftRecord);
+    } catch (e) {
+      console.error('Failed to save shift to Dexie:', e);
+    }
+
+    // Attempt to save to Supabase (if table exists)
+    try {
+      await supabase.from('shifts').insert({
+        cashier_name: shiftRecord.cashierName,
+        start_time: shiftRecord.startTime,
+        end_time: shiftRecord.endTime,
+        starting_cash: shiftRecord.startingCash,
+        expected_cash: shiftRecord.expectedCash,
+        actual_cash: shiftRecord.actualCash,
+        difference: shiftRecord.difference,
+        notes: shiftRecord.notes
+      });
+    } catch (e) {
+      console.log('No shifts table in supabase or insert failed.', e);
+    }
+
+    setActiveShift(null);
+    setShowEndShiftModal(false);
+    setShiftActualCash('');
+    setShiftNotes('');
+    forceLogout();
+    showToast('Shift diakhiri. Silakan login kembali.');
   };
 
   const handleExit = () => {
@@ -786,6 +873,66 @@ function App() {
           >
             MASUK KE SISTEM
           </button>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoggedIn && !activeShift) {
+    return (
+      <div style={{
+        height: '100vh', width: '100vw', background: 'var(--bg-app)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: '2rem'
+      }}>
+        <div style={{
+          background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px',
+          boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)',
+          width: '400px', textAlign: 'center', animation: 'fadeIn 0.5s ease-out'
+        }}>
+          <h2 style={{fontSize: '2rem', fontWeight: 900, marginBottom: '0.5rem', color: 'var(--text-main)'}}>Mulai Shift</h2>
+          <p style={{color: 'var(--text-muted)', marginBottom: '2rem'}}>Kasir: <span style={{fontWeight: 800, color: 'var(--primary)'}}>{activeCashier}</span></p>
+          
+          <div style={{textAlign: 'left', marginBottom: '2rem'}}>
+            <label style={{display: 'block', fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.5rem'}}>Saldo Awal Laci (Rp)</label>
+            <input 
+              type="number"
+              value={shiftStartCash}
+              onChange={e => setShiftStartCash(e.target.value)}
+              placeholder="0"
+              style={{
+                width: '100%', padding: '1rem', fontSize: '1.5rem', fontWeight: 800,
+                borderRadius: '16px', border: '2px solid var(--primary)', background: 'var(--bg-app)',
+                color: 'var(--text-main)', textAlign: 'center'
+              }}
+              autoFocus
+            />
+          </div>
+
+          <div style={{display: 'flex', gap: '1rem'}}>
+            <button 
+              onClick={forceLogout} 
+              style={{flex: 1, padding: '1.2rem', borderRadius: '16px', background: 'var(--bg-app)', border: '1px solid var(--border)', color: 'var(--text-muted)', fontWeight: 700, cursor: 'pointer'}}
+            >
+              Kembali
+            </button>
+            <button 
+              onClick={() => {
+                const shift = {
+                  id: Date.now(),
+                  cashierName: activeCashier,
+                  startTime: new Date().toISOString(),
+                  startingCash: parseInt(shiftStartCash) || 0
+                };
+                setActiveShift(shift);
+                setShiftStartCash('');
+                showToast('Shift berhasil dimulai!');
+              }}
+              style={{flex: 2, padding: '1.2rem', borderRadius: '16px', background: 'var(--primary)', border: 'none', color: 'white', fontWeight: 800, cursor: 'pointer', boxShadow: '0 10px 20px -5px var(--primary-soft)'}}
+            >
+              Mulai Shift
+            </button>
+          </div>
         </div>
       </div>
     );
@@ -1092,7 +1239,7 @@ function App() {
                 onClick={() => {
                   if (products.length === 0) return;
                   customPrompt('Hapus Semua Menu', 'Apakah Anda yakin ingin menghapus semua produk? Tindakan ini tidak dapat dibatalkan.', 'Hapus Semua Menu', async () => {
-                    const { error } = await supabase.from('products').delete().neq('id', 0);
+                    const { error } = await supabase.from('products').delete().not('id', 'is', null);
                     if (!error) {
                       fetchProducts();
                       showToast('Semua menu berhasil dihapus!');
@@ -1103,7 +1250,7 @@ function App() {
                 }}
                 style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'1rem 2rem',background:'var(--danger-soft, #fef2f2)',color:'var(--danger, #ef4444)',borderRadius:'16px',fontWeight:800,cursor:'pointer',fontSize:'1.1rem',border:'1px solid var(--danger, #ef4444)',boxShadow:'var(--shadow-main)'}}
               >
-                Hapus Semua
+                <IconTrash /> Hapus Semua
               </button>
             </div>
             
@@ -1677,6 +1824,71 @@ function App() {
         </div>
       )}
 
+      {/* End Shift Modal */}
+      {showEndShiftModal && activeShift && (() => {
+        const summary = getShiftSummary();
+        return (
+          <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+            <div style={{background: 'var(--bg-card)', width: '500px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'}}>
+              <h2 style={{fontSize: '2rem', marginBottom: '0.5rem'}}>Akhiri Shift</h2>
+              <p style={{color: 'var(--text-muted)', marginBottom: '2rem'}}>Kasir: <span style={{fontWeight: 800, color: 'var(--primary)'}}>{activeShift.cashierName}</span></p>
+              
+              <div style={{background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '16px', marginBottom: '2rem'}}>
+                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem'}}>
+                  <span style={{color: 'var(--text-muted)'}}>Saldo Awal:</span>
+                  <span style={{fontWeight: 700}}>Rp {(activeShift.startingCash || 0).toLocaleString()}</span>
+                </div>
+                <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem'}}>
+                  <span style={{color: 'var(--text-muted)'}}>Pemasukan Tunai:</span>
+                  <span style={{fontWeight: 700, color: 'var(--success)'}}>+ Rp {(summary?.totalCash || 0).toLocaleString()}</span>
+                </div>
+                <div style={{height: '1px', background: 'var(--border)', margin: '1rem 0'}}></div>
+                <div style={{display: 'flex', justifyContent: 'space-between'}}>
+                  <span style={{fontWeight: 700, fontSize: '1.1rem'}}>Saldo Akhir (Sistem):</span>
+                  <span style={{fontWeight: 900, fontSize: '1.2rem', color: 'var(--primary)'}}>Rp {(summary?.expectedCash || 0).toLocaleString()}</span>
+                </div>
+              </div>
+
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '1.5rem'}}>
+                <label style={{fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)'}}>UANG FISIK AKTUAL (DI LACI)</label>
+                <input 
+                  type="number"
+                  style={{padding: '1.2rem', fontSize: '1.2rem', fontWeight: 800, textAlign: 'center', borderRadius: '12px', border: '2px solid var(--border)'}}
+                  value={shiftActualCash}
+                  onChange={e => setShiftActualCash(e.target.value)}
+                  placeholder="0"
+                />
+              </div>
+
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem', marginBottom: '2rem'}}>
+                <label style={{fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)'}}>CATATAN SHIFT (OPSIONAL)</label>
+                <textarea 
+                  style={{padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)', resize: 'none', height: '80px', fontFamily: 'inherit'}}
+                  value={shiftNotes}
+                  onChange={e => setShiftNotes(e.target.value)}
+                  placeholder="Misal: Uang receh kurang..."
+                />
+              </div>
+
+              <div style={{display: 'flex', gap: '1rem'}}>
+                <button 
+                  onClick={() => setShowEndShiftModal(false)}
+                  style={{flex: 1, padding: '1.2rem', background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 700, borderRadius: '16px', border: 'none', cursor: 'pointer'}}
+                >
+                  BATAL
+                </button>
+                <button 
+                  onClick={handleEndShift}
+                  style={{flex: 2, padding: '1.2rem', background: 'var(--danger)', color: 'white', fontWeight: 800, borderRadius: '16px', border: 'none', cursor: 'pointer', boxShadow: '0 10px 20px -5px rgba(239,68,68,0.3)'}}
+                >
+                  AKHIRI & LOGOUT
+                </button>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Edit Modal  */}
       {editingProduct && (
         <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
@@ -1985,3 +2197,24 @@ function Main() {
 }
 
 export default Main;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

@@ -21,3 +21,12 @@ db.version(7).stores({
     if (!trx.captainName) trx.captainName = 'Self';
   });
 });
+
+db.version(8).stores({
+  products: '++id, name, category, price, stock, variants, image, barcode, cost',
+  transactions: '++id, timestamp, total, paymentMethod, customerName, memberId, notes, discount, status, cashierName, captainName',
+  members: '++id, name, phone, email, points, joinDate',
+  settings: 'key, value',
+  heldOrders: '++id, timestamp, customerName, items, total, notes, captainName',
+  shifts: '++id, startTime, endTime, cashierName, startingCash, expectedCash, actualCash, totalCash, totalQRIS, totalDebit'
+});
