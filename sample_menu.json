@@ -1,0 +1,98 @@
+[
+  {
+    "name": "Kopi Susu Gula Aren",
+    "price": 18000,
+    "stock": 100,
+    "category": "Kopi",
+    "variants": "Dingin,Panas",
+    "image": ""
+  },
+  {
+    "name": "Americano",
+    "price": 15000,
+    "stock": 100,
+    "category": "Kopi",
+    "variants": "Dingin,Panas",
+    "image": ""
+  },
+  {
+    "name": "Cappuccino",
+    "price": 22000,
+    "stock": 50,
+    "category": "Kopi",
+    "variants": "Dingin,Panas",
+    "image": ""
+  },
+  {
+    "name": "Matcha Latte",
+    "price": 25000,
+    "stock": 80,
+    "category": "Non-Kopi",
+    "variants": "Dingin,Panas",
+    "image": ""
+  },
+  {
+    "name": "Taro Latte",
+    "price": 22000,
+    "stock": 80,
+    "category": "Non-Kopi",
+    "variants": "Dingin,Panas",
+    "image": ""
+  },
+  {
+    "name": "Es Teh Manis",
+    "price": 8000,
+    "stock": 200,
+    "category": "Minuman",
+    "variants": "Dingin,Panas",
+    "image": ""
+  },
+  {
+    "name": "Nasi Goreng Spesial",
+    "price": 28000,
+    "stock": 40,
+    "category": "Makanan",
+    "variants": "Pedas,Sedang,Tidak Pedas",
+    "image": ""
+  },
+  {
+    "name": "Mie Goreng Ayam",
+    "price": 25000,
+    "stock": 50,
+    "category": "Makanan",
+    "variants": "Pedas,Sedang,Tidak Pedas",
+    "image": ""
+  },
+  {
+    "name": "Ayam Geprek Nasi",
+    "price": 22000,
+    "stock": 60,
+    "category": "Makanan",
+    "variants": "Level 1,Level 3,Level 5",
+    "image": ""
+  },
+  {
+    "name": "Kentang Goreng (French Fries)",
+    "price": 15000,
+    "stock": 100,
+    "category": "Snack",
+    "variants": "Original,BBQ,Keju",
+    "image": ""
+  },
+  {
+    "name": "Pisang Bakar Coklat Keju",
+    "price": 18000,
+    "stock": 50,
+    "category": "Snack",
+    "variants": "",
+    "image": ""
+  },
+  {
+    "name": "Roti Bakar Bervarian",
+    "price": 16000,
+    "stock": 50,
+    "category": "Snack",
+    "variants": "Coklat,Keju,Srikaya,Kacang",
+    "image": ""
+  }
+]

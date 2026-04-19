@@ -158,7 +158,7 @@ function KitchenDisplay() {
         gridTemplateColumns: 'repeat(auto-fill, minmax(350px, 1fr))', 
         gap: '2rem'
       }}>
-        {orders.filter(o => o.status === filter).map(order => (
+        {orders.filter(o => o.status === filter).map((order, idx) => (
           <div key={order.id} style={{
             background: 'var(--bg-card)',
             borderRadius: '28px',
@@ -178,12 +178,21 @@ function KitchenDisplay() {
               alignItems: 'flex-start'
             }}>
               <div>
-                <div style={{fontSize: '0.75rem', fontWeight: 800, color: 'var(--primary)', textTransform: 'uppercase', marginBottom: '0.2rem'}}>
-                  #{order.id.slice(0, 8)} • {order.payment_method}
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.3rem'}}>
+                  <div style={{
+                    background: 'var(--primary)', color: 'white',
+                    borderRadius: '8px', padding: '0.1rem 0.6rem',
+                    fontSize: '0.75rem', fontWeight: 800
+                  }}>
+                    #{order.id.slice(0, 8)} • {order.payment_method}
+                  </div>
                 </div>
-                <h3 style={{margin: 0, fontSize: '1.25rem', fontWeight: 800}}>{order.customer_name || 'Umum'}</h3>
+                <h3 style={{margin: 0, fontSize: '1.35rem', fontWeight: 900, display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                  <User size={16} style={{color: 'var(--primary)'}} />
+                  {order.customerName || 'Tamu'}<span style={{color: 'var(--primary)', fontFamily: 'monospace'}}>#{order.id.slice(0, 4).toUpperCase()}</span>
+                </h3>
                 <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.4rem', color: 'var(--text-muted)', fontSize: '0.85rem'}}>
-                   <User size={14} /> <span>Capt: {order.captain_name || 'Self'}</span>
+                   <span>Capt: {order.captain_name || 'Self'}</span>
                 </div>
               </div>
               <div style={{

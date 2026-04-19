@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import pkg from '../../package.json';
-import { Store, DollarSign, Monitor, Palette, Cog, RefreshCcw, ExternalLink } from 'lucide-react';
+import { Store, DollarSign, Monitor, Palette, Cog, RefreshCcw, ExternalLink, Star } from 'lucide-react';
 
 function Settings({ settings, updateSetting, rgb, setRgb, isRgbUserChange, rgbToHex, hexToRgb, appVersion, isCheckingUpdate, setIsCheckingUpdate, updateMessage, setUpdateMessage }) {
   const [activeSection, setActiveSection] = useState('store');
@@ -97,6 +97,70 @@ function Settings({ settings, updateSetting, rgb, setRgb, isRgbUserChange, rgbTo
                     <img src={settings.qris_image} alt="QRIS Preview" style={{width: '150px', borderRadius: '8px'}} />
                   </div>
                 )}
+
+                {/* Points System */}
+                <div style={{
+                  marginTop: '1rem', padding: '2rem', borderRadius: '20px',
+                  background: settings.points_enabled ? 'var(--primary-soft)' : 'var(--bg-app)',
+                  border: `2px solid ${settings.points_enabled ? 'var(--primary)' : 'var(--border)'}`,
+                  transition: 'all 0.3s'
+                }}>
+                  <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: settings.points_enabled ? '1.5rem' : 0}}>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                      <div style={{
+                        width: '42px', height: '42px', borderRadius: '12px',
+                        background: settings.points_enabled ? 'var(--primary)' : 'var(--border)',
+                        color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center',
+                        transition: 'all 0.3s'
+                      }}>
+                        <Star size={20} />
+                      </div>
+                      <div>
+                        <div style={{fontWeight: 700, fontSize: '1.1rem'}}>Sistem Poin Member</div>
+                        <div style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>Member dapat mengumpulkan dan menukarkan poin</div>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => updateSetting('points_enabled', !settings.points_enabled)}
+                      style={{
+                        width: '56px', height: '30px', borderRadius: '15px', border: 'none', cursor: 'pointer',
+                        background: settings.points_enabled ? 'var(--primary)' : 'var(--border)',
+                        position: 'relative', transition: 'all 0.3s'
+                      }}
+                    >
+                      <div style={{
+                        width: '24px', height: '24px', borderRadius: '50%', background: 'white',
+                        position: 'absolute', top: '3px',
+                        left: settings.points_enabled ? '29px' : '3px',
+                        transition: 'all 0.3s', boxShadow: '0 2px 4px rgba(0,0,0,0.2)'
+                      }} />
+                    </button>
+                  </div>
+                  {settings.points_enabled && (
+                    <div style={{display: 'flex', flexDirection: 'column', gap: '1.2rem'}}>
+                      <div className="form-group">
+                        <label className="form-label">POIN PER RUPIAH (Setiap berapa rupiah = 1 poin)</label>
+                        <input className="form-input" type="number" min="100" step="100"
+                          value={settings.points_per_rupiah || 1000}
+                          onChange={e => updateSetting('points_per_rupiah', parseInt(e.target.value) || 1000)}
+                        />
+                        <p style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>
+                          Contoh: 1000 = Setiap belanja Rp 1.000 mendapat 1 poin
+                        </p>
+                      </div>
+                      <div className="form-group">
+                        <label className="form-label">NILAI TUKAR POIN (1 poin = berapa Rupiah)</label>
+                        <input className="form-input" type="number" min="100" step="100"
+                          value={settings.points_value || 500}
+                          onChange={e => updateSetting('points_value', parseInt(e.target.value) || 500)}
+                        />
+                        <p style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>
+                          Contoh: 500 = 1 poin bisa ditukar untuk potongan Rp 500
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
           )}
@@ -261,7 +325,7 @@ function Settings({ settings, updateSetting, rgb, setRgb, isRgbUserChange, rgbTo
                     ['Nama Aplikasi', 'Luma POS'],
                     ['Versi', pkg.version],
                     ['Platform', 'Electron + React'],
-                    ['Database', 'IndexedDB (Dexie)'],
+                    ['Database', 'Supabase'],
                     ['Pembuat', pkg.author || 'Developer'],
                     ['Lisensi', 'Proprietary'],
                   ].map(([label, value]) => (

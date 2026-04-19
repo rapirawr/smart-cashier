@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
-import { Pause, X, Check, AlertTriangle, Download } from 'lucide-react'
+import { Pause, X, Check, AlertTriangle, Download, Upload } from 'lucide-react'
 import pkg from '../package.json'
 import { db } from './db'
 import { supabase } from './supabaseClient'
@@ -198,7 +198,7 @@ const CustomerBoard = () => {
             </div>
             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '1rem', color: '#888'}}>
               <span>Nama Customer:</span>
-              <span>{data.lastTransaction.customer_name}</span>
+              <span>{data.lastTransaction.customerName}<span style={{color: '#aaa', fontFamily: 'monospace'}}>#{data.lastTransaction.id?.slice(0,4).toUpperCase()}</span></span>
             </div>
             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', fontSize: '1rem', color: '#888'}}>
               <span>Waktu:</span>
@@ -286,7 +286,7 @@ const CustomerBoard = () => {
                  </div>
                ) : (
                  <img 
-                   src={data.qrisData.startsWith('http') ? data.qrisData : `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data.qrisData || 'READY')}`} 
+                   src={(data.qrisData && data.qrisData.startsWith('http')) ? data.qrisData : `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(data.qrisData || 'READY')}`} 
                    alt="QRIS" 
                    style={{width: '95%', height: '95%', objectFit: 'contain'}} 
                  />
@@ -343,14 +343,18 @@ const CustomerBoard = () => {
     const categories = ['Semua', ...new Set(data.products.flatMap(p => (p.category || 'Lainnya').split(',').map(c => c.trim())))];
 
     return (
-      <div className="pos-layout" style={{height: '100vh', padding: '4rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
-        <header style={{marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+      <div className="pos-layout" style={{height: '100vh', padding: '2rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
+        <header style={{
+          marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          background: 'var(--bg-card)', padding: '1.5rem 2.5rem', borderRadius: '24px',
+          boxShadow: 'var(--shadow-main)', border: '1px solid var(--border)'
+        }}>
           <div>
-            <h1 style={{fontSize: '3.5rem', fontWeight: 800, color: 'var(--text-main)'}}>{data.store_name}</h1>
-            <p style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>Daftar Menu Kami / Our Menu</p>
+            <h1 style={{fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: 0}}>{data.store_name}</h1>
+            <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, margin: '0.2rem 0 0 0'}}>{data.welcome_text}</p>
           </div>
-          <div style={{background: 'var(--primary)', padding: '1rem 2rem', borderRadius: '16px', color: 'white'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 700}}>Menu {data.store_name}</h2>
+          <div style={{background: 'var(--primary)', padding: '0.8rem 1.5rem', borderRadius: '12px', color: 'white'}}>
+            <h2 style={{fontSize: '1rem', margin: 0, fontWeight: 700}}>Menu {data.store_name}</h2>
           </div>
         </header>
 
@@ -375,7 +379,7 @@ const CustomerBoard = () => {
           ))}
         </div>
 
-        <div style={{flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '2rem', overflowY: 'auto'}} className="hide-scrollbar">
+        <div style={{flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))', gap: '1.5rem', overflowY: 'auto', alignContent: 'start'}} className="hide-scrollbar">
           {(() => {
             const filtered = data.products.filter(p => selectedCategory === 'Semua' || (p.category && p.category.split(',').map(c => c.trim()).includes(selectedCategory)));
             
@@ -388,29 +392,48 @@ const CustomerBoard = () => {
                   alignItems: 'center',
                   justifyContent: 'center',
                   opacity: 0.2,
-                  gap: '2rem',
-                  padding: '10rem 0'
+                  gap: '1rem',
+                  padding: '5rem 0'
                 }}>
-                  <div style={{transform: 'scale(5)'}}>
+                  <div style={{transform: 'scale(3)'}}>
                     <IconBox />
                   </div>
-                  <h2 style={{fontSize: '2.5rem', fontWeight: 800}}>Belum Ada Menu Tersedia</h2>
+                  <h2 style={{fontSize: '1.5rem', fontWeight: 800}}>Belum Ada Menu Tersedia</h2>
                 </div>
               );
             }
 
             return filtered.map(p => (
-              <div key={p.id} style={{background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border)', display: 'flex', gap: '1.5rem', alignItems: 'center'}}>
-                <div style={{width: '80px', height: '80px', background: 'var(--primary-soft)', borderRadius: '20px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2rem', color: 'var(--primary)', fontWeight: 800}}>
-                  {p.name.charAt(0)}
-                </div>
-                <div>
-                  <div style={{fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-main)'}}>{p.name}</div>
-                  <div style={{fontSize: '1.1rem', color: 'var(--text-muted)', marginBottom: '0.5rem'}}>
-                    {p.category}
-                    {p.variants && <span style={{marginLeft: '0.8rem', color: 'var(--primary)', fontWeight: 700, background: 'var(--primary-soft)', padding: '0.2rem 0.6rem', borderRadius: '8px', fontSize: '0.9rem'}}>• {p.variants}</span>}
+              <div key={p.id} style={{
+                background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '20px', 
+                border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)',
+                display: 'flex', flexDirection: 'column', gap: '0.8rem'
+              }}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.8rem'}}>
+                  <div style={{
+                    width: '44px', height: '44px', background: 'var(--primary-soft)', borderRadius: '14px',
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: '1.2rem', color: 'var(--primary)', fontWeight: 800, flexShrink: 0
+                  }}>
+                    {p.name.charAt(0)}
                   </div>
-                  <div style={{fontSize: '1.8rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {p.price.toLocaleString()}</div>
+                  <div style={{flex: 1, minWidth: 0}}>
+                    <div style={{fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.3}}>{p.name}</div>
+                    <div style={{fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600}}>{p.category}</div>
+                  </div>
+                </div>
+                {p.variants && (
+                  <div style={{display: 'flex', gap: '0.4rem', flexWrap: 'wrap'}}>
+                    {p.variants.split(',').map((v, i) => (
+                      <span key={i} style={{
+                        background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 700,
+                        padding: '3px 10px', borderRadius: '8px', fontSize: '0.7rem'
+                      }}>{v.trim()}</span>
+                    ))}
+                  </div>
+                )}
+                <div style={{fontSize: '1.15rem', fontWeight: 900, color: 'var(--primary)', marginTop: 'auto'}}>
+                  Rp {p.price.toLocaleString()}
                 </div>
               </div>
             ));
@@ -422,17 +445,21 @@ const CustomerBoard = () => {
   }
 
   return (
-    <div className="pos-layout" style={{height: '100vh', padding: '4rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
-      <header style={{marginBottom: '3rem', borderBottom: '2px solid var(--border)', paddingBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
+    <div className="pos-layout" style={{height: '100vh', padding: '2rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
+      <header style={{
+        marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+        background: 'var(--bg-card)', padding: '1.5rem 2.5rem', borderRadius: '24px',
+        boxShadow: 'var(--shadow-main)', border: '1px solid var(--border)'
+      }}>
         <div>
-          <h1 style={{fontSize: '3rem', fontWeight: 800, color: 'var(--text-main)'}}>{data.store_name}</h1>
-          <div style={{display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem'}}>
-            <p style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>{data.welcome_text}</p>
+          <h1 style={{fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: 0}}>{data.store_name}</h1>
+          <div style={{display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.2rem'}}>
+            <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, margin: 0}}>{data.welcome_text}</p>
             {data.cashierName && (
               <span style={{
                 background: 'var(--primary-soft)', color: 'var(--primary)', 
-                padding: '0.4rem 1rem', borderRadius: '12px', 
-                fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase'
+                padding: '0.2rem 0.6rem', borderRadius: '8px', 
+                fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase'
               }}>
                 Kasir: {data.cashierName}
               </span>
@@ -440,35 +467,35 @@ const CustomerBoard = () => {
           </div>
         </div>
         <div style={{
-          textAlign: 'right', background: 'var(--primary)', padding: '1.5rem 2.5rem', 
-          borderRadius: '24px', color: 'white', 
-          boxShadow: `0 20px 40px -10px ${data.themeColor}66`,
+          textAlign: 'right', background: 'var(--primary)', padding: '0.8rem 1.5rem', 
+          borderRadius: '16px', color: 'white', 
+          boxShadow: `0 10px 20px -5px ${data.themeColor}66`,
           border: '1px solid rgba(255,255,255,0.2)'
         }}>
-          <p style={{fontSize: '0.9rem', fontWeight: 600, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.4rem'}}>Pelanggan</p>
-          <h2 style={{fontSize: '2.5rem', fontWeight: 800}}>{data.customerName || 'UMUM'}</h2>
+          <p style={{fontSize: '0.7rem', fontWeight: 600, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.2rem', margin: 0}}>Pelanggan</p>
+          <h2 style={{fontSize: '1.2rem', fontWeight: 800, margin: 0}}>{data.customerName || 'UMUM'}</h2>
         </div>
       </header>
 
-      <div style={{flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+      <div style={{flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem'}}>
         {data.cart.length === 0 ? (
           <div style={{height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.15}}>
-            <div style={{transform: 'scale(5)', marginBottom: '4rem'}}>
+            <div style={{transform: 'scale(3)', marginBottom: '2rem'}}>
               <IconStore />
             </div>
-            <h2 style={{fontSize: '2rem', fontWeight: 600, marginTop: '2rem'}}>Menunggu Pesanan...</h2>
+            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginTop: 0}}>Menunggu Pesanan...</h2>
           </div>
         ) : (
           data.cart.map((item, idx) => (
-            <div key={`${item.id}-${idx}`} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border)'}}>
+            <div key={`${item.id}-${idx}`} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', padding: '1.2rem 1.5rem', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
               <div>
-                <div style={{fontSize: '2.5rem', fontWeight: 700, color: 'var(--text-main)'}}>
+                <div style={{fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)'}}>
                   {item.name}
-                  {item.selectedVariant && <span style={{fontSize: '1.5rem', color: 'var(--primary)', marginLeft: '1rem'}}>({item.selectedVariant})</span>}
+                  {item.selectedVariant && <span style={{fontSize: '0.9rem', color: 'var(--primary)', marginLeft: '0.5rem'}}>({item.selectedVariant})</span>}
                 </div>
-                <div style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>{item.qty} x Rp {item.price.toLocaleString()}</div>
+                <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>{item.qty} x Rp {item.price.toLocaleString()}</div>
               </div>
-              <div style={{fontSize: '2.5rem', fontWeight: 800, color: 'var(--primary)'}}>
+              <div style={{fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)'}}>
                 Rp {(item.price * item.qty).toLocaleString()}
               </div>
             </div>
@@ -476,9 +503,9 @@ const CustomerBoard = () => {
         )}
       </div>
 
-      <footer style={{marginTop: '3rem', background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
-        <span style={{fontSize: '2rem', fontWeight: 600, color: 'var(--text-main)'}}>Total Bayar</span>
-        <span style={{fontSize: '5rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {(data.total || 0).toLocaleString()}</span>
+      <footer style={{marginTop: '2rem', background: 'var(--bg-card)', padding: '1.5rem 2.5rem', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
+        <span style={{fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)'}}>Total Bayar</span>
+        <span style={{fontSize: '2.5rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {(data.total || 0).toLocaleString()}</span>
       </footer>
     </div>
   );
@@ -493,7 +520,10 @@ function App() {
     themeColor: '#6366f1',
     isCustomerDisplayOn: true,
     welcomeText: 'Selamat Datang / Welcome' ,
-    qrisImage: ''
+    qrisImage: '',
+    points_enabled: false,
+    points_per_rupiah: 1000,   // Setiap 1000 rupiah = 1 poin
+    points_value: 500          // 1 poin = Rp 500 saat redeem
   });
 
   const [products, setProducts] = useState([]);
@@ -524,6 +554,8 @@ function App() {
   const [transactionNotes, setTransactionNotes] = useState('');
   const [showAddProduct, setShowAddProduct] = useState(false);
   const [formData, setFormData] = useState({ name: '', price: '', stock: '', category: '', variants: '', image: '' });
+  const [usePoints, setUsePoints] = useState(false);
+  const [pointsToRedeem, setPointsToRedeem] = useState(0);
   const [historySearch, setHistorySearch] = useState('');
   const [historyDateFilter, setHistoryDateFilter] = useState('all');
   const [activeCashier, setActiveCashier] = useState(localStorage.getItem('activeCashier') || '');
@@ -784,6 +816,54 @@ function App() {
     }
   };
 
+  // === EXPORT MENU ===
+  const exportMenu = () => {
+    if (products.length === 0) { customAlert('Export', 'Tidak ada produk untuk diekspor.'); return; }
+    const exportData = products.map(({ name, price, stock, category, variants, image }) => ({ name, price, stock, category, variants, image }));
+    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `menu_${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast(`${exportData.length} produk berhasil diekspor!`);
+  };
+
+  // === IMPORT MENU ===
+  const importMenu = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!Array.isArray(data)) throw new Error('Format tidak valid');
+        const required = ['name', 'price', 'stock'];
+        const invalid = data.find(item => required.some(k => item[k] === undefined));
+        if (invalid) throw new Error('Kolom name/price/stock wajib ada di setiap item');
+        customConfirm(
+          'Import Menu',
+          `Akan mengimpor ${data.length} produk. Pilih mode:\n• OK = Tambah ke menu yang ada\n• Batalkan = Hanya ganti (hapus semua dulu)`,
+          async () => {
+            // Mode: Tambah (merge)
+            const inserts = data.map(p => ({
+              name: p.name, price: parseInt(p.price) || 0, stock: parseInt(p.stock) || 0,
+              category: p.category || 'Umum', variants: p.variants || '', image: p.image || ''
+            }));
+            const { error } = await supabase.from('products').insert(inserts);
+            if (!error) { fetchProducts(); showToast(`${inserts.length} produk berhasil diimport!`); }
+            else { customAlert('Import Gagal', error.message); }
+          }
+        );
+      } catch (err) {
+        customAlert('Import Gagal', `File tidak valid: ${err.message}`);
+      }
+      e.target.value = '';
+    };
+    reader.readAsText(file);
+  };
+
   // === HOLD / RESUME ORDER ===
   const holdCurrentOrder = useCallback(() => {
     if (cart.length === 0) return;
@@ -806,10 +886,21 @@ function App() {
     showToast('Pesanan yang ditahan dihapus.');
   }, [showToast]);
 
-  const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-  const taxAmount = subtotal * (parseInt(settings.taxRate) / 100);
-  const discount = activeMember ? subtotal * (parseInt(settings.memberDiscount) / 100) : 0;
-  const total = subtotal + taxAmount - discount;
+  const currentTaxRate = parseInt(settings.tax_rate ?? settings.taxRate) || 0;
+  const currentMemberDiscount = parseInt(settings.member_discount ?? settings.memberDiscount) || 0;
+  const subtotal = cart.reduce((acc, i) => acc + ((parseFloat(i.price) || 0) * (parseInt(i.qty) || 0)), 0);
+  const taxAmount = subtotal * (currentTaxRate / 100);
+  const discount = activeMember ? subtotal * (currentMemberDiscount / 100) : 0;
+
+  // Points calculation
+  const isPointsEnabled = settings.points_enabled === true;
+  const pointsPerRupiah = parseInt(settings.points_per_rupiah) || 1000;
+  const pointsValue = parseInt(settings.points_value) || 500;
+  const maxRedeemable = activeMember ? (parseInt(activeMember.points) || 0) : 0;
+  const pointsDiscount = (usePoints && isPointsEnabled && activeMember) ? (pointsToRedeem * pointsValue) : 0;
+  const earnedPoints = isPointsEnabled ? Math.floor(subtotal / pointsPerRupiah) : 0;
+
+  const total = subtotal + taxAmount - discount - pointsDiscount;
 
   const handleCheckout = useCallback(async () => {
     if (cart.length === 0 || isProcessing) return;
@@ -836,7 +927,10 @@ function App() {
         subtotal: subtotal,
         tax: taxAmount,
         discount: discount,
-        customer_name: customerName || 'Umum',
+        points_redeemed: (usePoints && isPointsEnabled) ? pointsToRedeem : 0,
+        points_discount: pointsDiscount,
+        points_earned: earnedPoints,
+        customerName: customerName || `Cust ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
         member_phone: activeMember ? activeMember.phone : null,
         payment_method: paymentMethod,
         items: cart.map(item => ({ name: item.name, price: item.price, qty: item.qty, selectedVariant: item.selectedVariant })),
@@ -850,6 +944,13 @@ function App() {
       if (error) throw error;
       const savedTransaction = data[0];
       
+      // Update member points if points system is enabled
+      if (isPointsEnabled && activeMember) {
+        const currentPoints = parseInt(activeMember.points) || 0;
+        const newPoints = currentPoints - pointsToRedeem + earnedPoints;
+        await supabase.from('members').update({ points: Math.max(0, newPoints) }).eq('id', activeMember.id);
+      }
+
       // Notify Kitchen (via Real-time, but BroadcastChannel still used for same-browser sync)
       const kitchenChannel = new BroadcastChannel('kitchen_display');
       kitchenChannel.postMessage({ type: 'NEW_ORDER', order: savedTransaction });
@@ -878,15 +979,18 @@ function App() {
         setIsProcessing(false);
         setShowCashCalc(false);
         setTransactionNotes('');
+        setUsePoints(false);
+        setPointsToRedeem(0);
         
         fetchProducts(); 
         fetchTransactions();
+        fetchMembers();
         setCheckoutKey(k => k + 1);
       }, 500);
       
     } catch (err) {
-      console.error(err);
-      customAlert('Error', 'Gagal memproses transaksi.');
+      console.error('Checkout Error:', err?.message || err?.details || err);
+      customAlert('Error', `Gagal memproses transaksi: ${err?.message || 'Unknown error'}`);
       setIsProcessing(false);
     }
   }, [cart, customerName, activeMember, paymentMethod, transactionNotes, discount, activeCashier, activeCaptain, showToast, total, showCashCalc, showQRISModal, isProcessing]);
@@ -894,9 +998,11 @@ function App() {
   // Sync with Customer Display
     useEffect(() => {
       // Calculators
-      const subtotal_val = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
-      const taxAmount_val = subtotal_val * (parseInt(settings.taxRate) / 100);
-      const discount_val = activeMember ? subtotal_val * (parseInt(settings.memberDiscount) / 100) : 0;
+      const currentTaxRate_val = parseInt(settings.tax_rate ?? settings.taxRate) || 0;
+      const currentMemberDiscount_val = parseInt(settings.member_discount ?? settings.memberDiscount) || 0;
+      const subtotal_val = cart.reduce((acc, i) => acc + ((parseFloat(i.price) || 0) * (parseInt(i.qty) || 0)), 0);
+      const taxAmount_val = subtotal_val * (currentTaxRate_val / 100);
+      const discount_val = activeMember ? subtotal_val * (currentMemberDiscount_val / 100) : 0;
       const total_val = subtotal_val + taxAmount_val - discount_val;
   
       const channel = new BroadcastChannel('customer_display');
@@ -933,6 +1039,9 @@ function App() {
       } else {
         setActiveMember(null);
       }
+      // Reset points when member changes
+      setUsePoints(false);
+      setPointsToRedeem(0);
     };
     findMember();
   }, [memberPhone]);
@@ -1017,12 +1126,14 @@ function App() {
       const transaction = {
         timestamp: new Date().toISOString(),
         total: total,
-        customerName: customerName || 'Umum',
-        memberId: activeMember ? activeMember.id : null,
+        subtotal: subtotal,
+        tax: taxAmount,
+        discount: discount,
+        customerName: customerName || `Cust ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
+        member_phone: activeMember ? activeMember.phone : null,
         payment_method: 'Dapur (Pending)',
         items: cart.map(item => ({ name: item.name, price: item.price, qty: item.qty, selectedVariant: item.selectedVariant })),
         notes: transactionNotes,
-        discount: discount,
         status: 'preparing',
         cashier_name: activeCashier || 'Admin',
         captain_name: activeCaptain || 'Self'
@@ -1041,8 +1152,8 @@ function App() {
       setTransactionNotes('');
       setActiveCaptain('');
     } catch (err) {
-      console.error(err);
-      showToast('Gagal mengirim ke dapur', 'error');
+      console.error('Kitchen Error:', err?.message || err?.details || err);
+      showToast(`Gagal mengirim ke dapur: ${err?.message || ''}`, 'error');
     }
   };
 
@@ -1385,7 +1496,7 @@ function App() {
                         <div style={{fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700}}>{t.payment_method || 'Cash'}</div>
                       </td>
                     <td style={{fontFamily: 'monospace'}}>#transaction-{t.id}</td>
-                    <td style={{fontWeight: 600}}>{t.customer_name} {t.member_id ? '(Member)' : ''}</td>
+                    <td style={{fontWeight: 600}}>{t.customerName} {t.memberId ? '(Member)' : ''}</td>
                     <td style={{fontWeight: 700, color: 'var(--primary)'}}>Rp {t.total.toLocaleString()}</td>
                     <td style={{textAlign: 'right', borderRadius: '0 16px 16px 0', paddingRight: '1.5rem'}}>
                       <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'flex-end'}}>
@@ -1425,14 +1536,26 @@ function App() {
 
         {activeTab === 'stock' && (
           <div style={{background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-main)', overflowY: 'auto'}}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '2rem'}}>
               <h2 style={{fontSize: '2rem'}}>Manajemen Stok Barang</h2>
-              {products.some(p => p.stock < 10) && (
-                <div style={{background: '#fef2f2', color: '#ef4444', padding: '1rem 2rem', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid #fee2e2'}}>
-                  <IconAlert />
-                  <span style={{fontWeight: 700}}>Peringatan: {products.filter(p => p.stock < 10).length} Produk Hampir Habis!</span>
-                </div>
-              )}
+              <div style={{display: 'flex', gap: '0.75rem', alignItems: 'center'}}>
+                {products.some(p => p.stock < 10) && (
+                  <div style={{background: '#fef2f2', color: '#ef4444', padding: '1rem 2rem', borderRadius: '16px', display: 'flex', alignItems: 'center', gap: '1rem', border: '1px solid #fee2e2'}}>
+                    <IconAlert />
+                    <span style={{fontWeight: 700}}>Peringatan: {products.filter(p => p.stock < 10).length} Produk Hampir Habis!</span>
+                  </div>
+                )}
+                <button
+                  onClick={exportMenu}
+                  style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.8rem 1.5rem',background:'var(--primary-soft)',color:'var(--primary)',border:'1px solid var(--primary)',borderRadius:'14px',fontWeight:700,cursor:'pointer',fontSize:'0.9rem'}}
+                >
+                  <Download size={16} /> Export JSON
+                </button>
+                <label style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'0.8rem 1.5rem',background:'var(--success-soft,rgba(34,197,94,0.1))',color:'var(--success,#22c55e)',border:'1px solid var(--success,#22c55e)',borderRadius:'14px',fontWeight:700,cursor:'pointer',fontSize:'0.9rem'}}>
+                  <Upload size={16} /> Import JSON
+                  <input type="file" accept=".json" onChange={importMenu} style={{display:'none'}} />
+                </label>
+              </div>
             </div>
             <form style={{display: 'flex', gap: '1.25rem', marginBottom: '4rem'}} onSubmit={async (e) => {
               e.preventDefault();
@@ -1581,6 +1704,7 @@ function App() {
                 <tr style={{textAlign: 'left', color: 'var(--text-muted)', fontSize: '0.8rem', textTransform: 'uppercase'}}>
                   <th style={{padding: '0 1.5rem'}}>Nama Member</th>
                   <th>Nomor HP</th>
+                  {isPointsEnabled && <th>Poin</th>}
                   <th style={{textAlign: 'right', paddingRight: '1.5rem'}}>Aksi</th>
                 </tr>
               </thead>
@@ -1592,6 +1716,16 @@ function App() {
                   <tr key={m.id} style={{background: 'var(--bg-app)'}}>
                     <td style={{padding: '1.5rem', borderRadius: '16px 0 0 16px', fontWeight: 600}}>{m.name}</td>
                     <td style={{fontWeight: 700}}>{m.phone}</td>
+                    {isPointsEnabled && (
+                      <td>
+                        <span style={{
+                          background: 'var(--primary-soft)', color: 'var(--primary)',
+                          padding: '4px 10px', borderRadius: '8px', fontWeight: 800, fontSize: '0.9rem'
+                        }}>
+                          ⭐ {parseInt(m.points) || 0}
+                        </span>
+                      </td>
+                    )}
                     <td style={{textAlign: 'right', borderRadius: '0 16px 16px 0', paddingRight: '1.5rem'}}>
                       <button style={{color: '#ef4444', background: '#fef2f2', padding: '0.5rem 1rem', borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: 700}} onClick={() => {
                         customConfirm('Hapus Member', 'Hapus member ini?', async () => {
@@ -1683,10 +1817,10 @@ function App() {
           </div>
 
           <div style={{marginBottom: '1rem'}}>
-            <p style={{fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.6rem', color: 'var(--text-muted)'}}>NAMA PELANGGAN / MEJA</p>
+            <p style={{fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.6rem', color: 'var(--text-muted)'}}>NAMA PELANGGAN</p>
             <input 
               type="text" 
-              placeholder="Nama Pelanggan Umum" 
+              placeholder="Nama Pelanggan " 
               style={{width: '100%', padding: '0.8rem', fontSize: '1rem', borderRadius: '12px'}}
               value={customerName}
               onChange={e => setCustomerName(e.target.value)}
@@ -1776,13 +1910,68 @@ function App() {
               <span style={{fontWeight: 600}}>Rp {subtotal.toLocaleString()}</span>
             </div>
             <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem'}}>
-              <span>Pajak ({settings.taxRate}%)</span>
+              <span>Pajak ({currentTaxRate}%)</span>
               <span style={{fontWeight: 600}}>Rp {taxAmount.toLocaleString()}</span>
             </div>
             {discount > 0 && (
               <div style={{display: 'flex', justifyContent: 'space-between', color: 'var(--primary)', fontSize: '0.9rem'}}>
-                <span>Diskon Member ({settings.memberDiscount}%)</span>
+                <span>Diskon Member ({currentMemberDiscount}%)</span>
                 <span>-Rp {discount.toLocaleString()}</span>
+              </div>
+            )}
+            {/* Points Section */}
+            {isPointsEnabled && activeMember && (
+              <div style={{marginTop: '0.5rem', padding: '0.8rem', background: 'var(--primary-soft)', borderRadius: '12px', border: '1px solid var(--primary)' }}>
+                <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem'}}>
+                  <span style={{fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)'}}>⭐ Poin Member: {maxRedeemable} poin</span>
+                  <button
+                    onClick={() => {
+                      const newUse = !usePoints;
+                      setUsePoints(newUse);
+                      if (newUse) {
+                        // Auto-set max redeemable (limited by total after discount)
+                        const maxByTotal = Math.floor((subtotal + taxAmount - discount) / pointsValue);
+                        setPointsToRedeem(Math.min(maxRedeemable, maxByTotal));
+                      } else {
+                        setPointsToRedeem(0);
+                      }
+                    }}
+                    style={{
+                      padding: '4px 12px', borderRadius: '8px', fontSize: '0.75rem', fontWeight: 800,
+                      background: usePoints ? 'var(--primary)' : 'var(--bg-card)',
+                      color: usePoints ? 'white' : 'var(--primary)',
+                      border: '1px solid var(--primary)', cursor: 'pointer', transition: 'all 0.2s'
+                    }}
+                  >
+                    {usePoints ? 'AKTIF ✓' : 'TUKAR POIN'}
+                  </button>
+                </div>
+                {usePoints && maxRedeemable > 0 && (
+                  <div>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
+                      <input
+                        type="range"
+                        min={0}
+                        max={Math.min(maxRedeemable, Math.floor((subtotal + taxAmount - discount) / pointsValue))}
+                        value={pointsToRedeem}
+                        onChange={e => setPointsToRedeem(parseInt(e.target.value) || 0)}
+                        style={{flex: 1, accentColor: 'var(--primary)'}}
+                      />
+                      <span style={{fontSize: '0.85rem', fontWeight: 800, color: 'var(--primary)', minWidth: '60px', textAlign: 'right'}}>
+                        {pointsToRedeem} poin
+                      </span>
+                    </div>
+                    <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.3rem'}}>
+                      <span>Potongan</span>
+                      <span style={{fontWeight: 700, color: 'var(--success)'}}>-Rp {pointsDiscount.toLocaleString()}</span>
+                    </div>
+                  </div>
+                )}
+                {earnedPoints > 0 && (
+                  <div style={{fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.3rem', display: 'flex', alignItems: 'center', gap: '0.3rem'}}>
+                    ✨ Akan mendapat <strong style={{color: 'var(--primary)'}}>+{earnedPoints} poin</strong> dari transaksi ini
+                  </div>
+                )}
               </div>
             )}
             <div style={{marginTop: '1rem', marginBottom: '1.5rem'}}>
@@ -1811,16 +2000,10 @@ function App() {
               )}
             </button>
             {cart.length > 0 && (
-              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem'}}>
-                <button
-                  onClick={sendToKitchen}
-                  style={{padding:'0.8rem',background:'var(--primary-soft)',color:'var(--primary)',fontWeight:700,border:'1px solid var(--primary)',borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',gap:'0.5rem',cursor:'pointer'}}
-                >
-                  <Pause size={18} /> KE DAPUR
-                </button>
+              <div style={{marginTop: '0.75rem'}}>
                 <button
                   onClick={holdCurrentOrder}
-                  style={{padding:'0.8rem',background:'var(--warning-soft,rgba(245,158,11,0.1))',color:'var(--warning,#f59e0b)',fontWeight:700,border:'1px solid var(--warning,#f59e0b)',borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',gap:'0.5rem',cursor:'pointer'}}
+                  style={{padding:'0.8rem',width:'100%',background:'var(--warning-soft,rgba(245,158,11,0.1))',color:'var(--warning,#f59e0b)',fontWeight:700,border:'1px solid var(--warning,#f59e0b)',borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',gap:'0.5rem',cursor:'pointer'}}
                 >
                   <Pause size={18} /> TAHAN (Ctrl+H)
                 </button>
@@ -1862,7 +2045,7 @@ function App() {
                 </div>
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8rem'}}>
                   <span>Nama Customer:</span>
-                  <span>{lastTransaction.customer_name}</span>
+                  <span>{lastTransaction.customerName}<span style={{color: '#aaa', fontFamily: 'monospace'}}>#{lastTransaction.id?.slice(0,4).toUpperCase()}</span></span>
                 </div>
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '0.8rem'}}>
                   <span>Waktu:</span>
