@@ -1,7 +1,13 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { Pause, X, Check, AlertTriangle, Download } from 'lucide-react'
 import pkg from '../package.json'
 import { db } from './db'
+import { supabase } from './supabaseClient'
 import * as XLSX from 'xlsx'
+import Dashboard from './components/Dashboard'
+import Settings from './components/Settings'
+import CashCalculator from './components/CashCalculator'
+import KitchenDisplay from './components/KitchenDisplay'
 import './App.css'
 
 //  Icon Components
@@ -21,32 +27,69 @@ const IconQR = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none"
 const IconMenu = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="7" rx="1" /><rect x="3" y="14" width="7" height="7" rx="1" /><rect x="14" y="3" width="7" height="7" rx="1" /><rect x="14" y="14" width="7" height="7" rx="1" /></svg>;
 const IconEye = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>;
 const IconTrash = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/></svg>;
+const IconUpload = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="17 8 12 3 7 8" /><line x1="12" y1="3" x2="12" y2="15" /></svg>;
+const IconDashboard = () => <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="7" height="9" rx="1"/><rect x="14" y="3" width="7" height="5" rx="1"/><rect x="14" y="12" width="7" height="9" rx="1"/><rect x="3" y="16" width="7" height="5" rx="1"/></svg>;
+const IconPause = () => <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>;
 const IconCart = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.68 13.39a2 2 0 0 0 2 1.61h9.72a2 2 0 0 0 2-1.61L23 6H6"/></svg>;
 
 const CustomerBoard = () => {
   const [data, setData] = useState({ 
     cart: [], 
     total: 0, 
-    storeName: 'Smart Cashier', 
-    welcomeText: 'Selamat Datang' , 
-    isDark: false, 
-    themeColor: '#6366f1', 
-    isCustomerDisplayOn: true, 
+    store_name: 'Luma POS', 
+    welcome_text: 'Selamat Datang' , 
+    is_dark: true, 
+    primary_color: '#6366f1', 
+    is_customer_display_on: true, 
     customerViewMode: 'cart', 
     products: [],
     showReceipt: false,
     lastTransaction: null,
-    storeAddress: ''
+    store_address: '',
+    cashierName: ''
   });
   const [selectedCategory, setSelectedCategory] = useState('Semua');
 
+
+  const fetchSettings = async () => {
+    const { data: s, error } = await supabase.from('settings').select('*').single();
+    if (!error && s) {
+      setData(prev => ({
+        ...prev,
+        store_name: s.store_name,
+        store_address: s.store_address,
+        welcome_text: s.welcome_text,
+        primary_color: s.primary_color,
+        is_dark: true, // Standardized to dark for premium feel
+        is_customer_display_on: s.is_customer_display_on
+      }));
+    }
+  };
+
   useEffect(() => {
+    fetchSettings();
+
     const channel = new BroadcastChannel('customer_display');
-    channel.onmessage = (event) => setData(event.data);
+    channel.onmessage = (event) => setData(prev => ({ ...prev, ...event.data }));
+
+    // Real-time Settings Sync
+    const settingsSub = supabase
+      .channel('customer_settings_sync')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'settings' }, (payload) => {
+        const s = payload.new;
+        setData(prev => ({
+          ...prev,
+          store_name: s.store_name,
+          store_address: s.store_address,
+          welcome_text: s.welcome_text,
+          primary_color: s.primary_color,
+          is_customer_display_on: s.is_customer_display_on
+        }));
+      })
+      .subscribe();
 
     // Prevent Refresh and Context Menu
     const preventRefresh = (e) => {
-      // F5, Ctrl+R, Cmd+R
       if (e.key === 'F5' || (e.ctrlKey && e.key === 'r') || (e.metaKey && e.key === 'r')) {
         e.preventDefault();
       }
@@ -58,6 +101,7 @@ const CustomerBoard = () => {
 
     return () => {
       channel.close();
+      supabase.removeChannel(settingsSub);
       window.removeEventListener('keydown', preventRefresh);
       window.removeEventListener('contextmenu', preventContextMenu);
     };
@@ -66,16 +110,16 @@ const CustomerBoard = () => {
   // Apply Theme to Customer Screen
   useEffect(() => {
     const root = document.documentElement;
-    root.style.setProperty('--primary', data.themeColor);
-    root.style.setProperty('--primary-soft', `${data.themeColor}15`);
-    if (data.isDark) {
+    root.style.setProperty('--primary', data.primary_color);
+    root.style.setProperty('--primary-soft', `${data.primary_color}15`);
+    if (data.is_dark) {
       document.body.classList.add('dark');
     } else {
       document.body.classList.remove('dark');
     }
-  }, [data.themeColor, data.isDark]);
+  }, [data.primary_color, data.is_dark]);
 
-  if (data.isCustomerDisplayOn === false) {
+  if (data.is_customer_display_on === false) {
     return (
       <div style={{
         position: 'fixed',
@@ -121,12 +165,19 @@ const CustomerBoard = () => {
         <div style={{
           position: 'absolute',
           bottom: '4rem',
-          fontSize: '0.9rem',
-          fontWeight: 600,
-          opacity: 0.1,
-          letterSpacing: '0.1em'
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          gap: '0.5rem'
         }}>
-          {data.storeName}
+          <div style={{fontSize: '0.9rem', fontWeight: 600, opacity: 0.1, letterSpacing: '0.1em'}}>
+            {data.store_name}
+          </div>
+          {data.cashierName && (
+            <div style={{fontSize: '0.75rem', fontWeight: 700, opacity: 0.05, textTransform: 'uppercase'}}>
+              KASIR: {data.cashierName}
+            </div>
+          )}
         </div>
       </div>
     );
@@ -137,8 +188,8 @@ const CustomerBoard = () => {
     return (
       <div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)', padding: '4rem'}}>
         <div style={{background: 'white', color: 'black', width: '500px', padding: '4rem', borderRadius: '48px', boxShadow: '0 50px 100px -20px rgba(0,0,0,0.3)', textAlign: 'center', fontFamily: 'monospace'}}>
-          <h2 style={{fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem'}}>{data.storeName}</h2>
-          <p style={{fontSize: '1rem', color: '#666', marginBottom: '3rem'}}>{data.storeAddress}</p>
+          <h2 style={{fontSize: '2rem', fontWeight: 800, marginBottom: '0.5rem'}}>{data.store_name}</h2>
+          <p style={{fontSize: '1rem', color: '#666', marginBottom: '3rem'}}>{data.store_address}</p>
           
           <div style={{textAlign: 'left', borderTop: '2px dashed #eee', borderBottom: '2px dashed #eee', padding: '2rem 0', margin: '2rem 0'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '1rem', color: '#888'}}>
@@ -147,7 +198,7 @@ const CustomerBoard = () => {
             </div>
             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '1rem', color: '#888'}}>
               <span>Nama Customer:</span>
-              <span>{data.lastTransaction.customerName}</span>
+              <span>{data.lastTransaction.customer_name}</span>
             </div>
             <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '2rem', fontSize: '1rem', color: '#888'}}>
               <span>Waktu:</span>
@@ -168,11 +219,11 @@ const CustomerBoard = () => {
           <div style={{textAlign: 'right', gap: '1rem', display: 'flex', flexDirection: 'column'}}>
             <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
               <span style={{fontSize: '1.2rem', fontWeight: 600}}>TOTAL:</span>
-              <span style={{fontWeight: 900, fontSize: '3rem', color: 'var(--primary)'}}>Rp {data.lastTransaction.total.toLocaleString()}</span>
+              <span style={{fontWeight: 900, fontSize: '3rem', color: 'var(--primary)'}}>Rp {(data.lastTransaction?.total || 0).toLocaleString()}</span>
             </div>
             <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '1.2rem', color: '#666'}}>
               <span>Metode Bayar:</span>
-              <span style={{fontWeight: 700}}>{data.lastTransaction.paymentMethod}</span>
+              <span style={{fontWeight: 700}}>{data.lastTransaction.payment_method}</span>
             </div>
           </div>
 
@@ -264,7 +315,7 @@ const CustomerBoard = () => {
 
           <div style={{width: '100%', padding: '2rem', background: 'var(--primary-soft)', borderRadius: '24px', border: '2px solid var(--primary)'}}>
             <div style={{fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '0.5rem', textTransform: 'uppercase'}}>Total yang harus dibayar</div>
-            <div style={{fontSize: '4.5rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {data.total.toLocaleString()}</div>
+            <div style={{fontSize: '4.5rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {(data.total || 0).toLocaleString()}</div>
           </div>
 
           <div style={{display: 'flex', alignItems: 'center', gap: '1.5rem', color: 'var(--text-muted)', fontSize: '1.2rem'}}>
@@ -295,11 +346,11 @@ const CustomerBoard = () => {
       <div className="pos-layout" style={{height: '100vh', padding: '4rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
         <header style={{marginBottom: '3rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
           <div>
-            <h1 style={{fontSize: '3.5rem', fontWeight: 800, color: 'var(--text-main)'}}>{data.storeName}</h1>
+            <h1 style={{fontSize: '3.5rem', fontWeight: 800, color: 'var(--text-main)'}}>{data.store_name}</h1>
             <p style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>Daftar Menu Kami / Our Menu</p>
           </div>
           <div style={{background: 'var(--primary)', padding: '1rem 2rem', borderRadius: '16px', color: 'white'}}>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 700}}>Menu {data.storeName}</h2>
+            <h2 style={{fontSize: '1.5rem', fontWeight: 700}}>Menu {data.store_name}</h2>
           </div>
         </header>
 
@@ -365,6 +416,7 @@ const CustomerBoard = () => {
             ));
           })()}
         </div>
+
       </div>
     );
   }
@@ -373,8 +425,19 @@ const CustomerBoard = () => {
     <div className="pos-layout" style={{height: '100vh', padding: '4rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
       <header style={{marginBottom: '3rem', borderBottom: '2px solid var(--border)', paddingBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start'}}>
         <div>
-          <h1 style={{fontSize: '3rem', fontWeight: 800, color: 'var(--text-main)'}}>{data.storeName}</h1>
-          <p style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>{data.welcomeText}</p>
+          <h1 style={{fontSize: '3rem', fontWeight: 800, color: 'var(--text-main)'}}>{data.store_name}</h1>
+          <div style={{display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.5rem'}}>
+            <p style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>{data.welcome_text}</p>
+            {data.cashierName && (
+              <span style={{
+                background: 'var(--primary-soft)', color: 'var(--primary)', 
+                padding: '0.4rem 1rem', borderRadius: '12px', 
+                fontSize: '0.9rem', fontWeight: 800, textTransform: 'uppercase'
+              }}>
+                Kasir: {data.cashierName}
+              </span>
+            )}
+          </div>
         </div>
         <div style={{
           textAlign: 'right', background: 'var(--primary)', padding: '1.5rem 2.5rem', 
@@ -415,7 +478,7 @@ const CustomerBoard = () => {
 
       <footer style={{marginTop: '3rem', background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
         <span style={{fontSize: '2rem', fontWeight: 600, color: 'var(--text-main)'}}>Total Bayar</span>
-        <span style={{fontSize: '5rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {data.total.toLocaleString()}</span>
+        <span style={{fontSize: '5rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {(data.total || 0).toLocaleString()}</span>
       </footer>
     </div>
   );
@@ -423,7 +486,7 @@ const CustomerBoard = () => {
 
 function App() {
   const [settings, setSettings] = useState({
-    storeName: 'Store Name',
+    storeName: 'Luma POS',
     storeAddress: 'Store Address',
     taxRate: 11,
     memberDiscount: 5,
@@ -456,6 +519,17 @@ function App() {
   const [isCheckingUpdate, setIsCheckingUpdate] = useState(false);
   const [updateMessage, setUpdateMessage] = useState('');
   const [toast, setToast] = useState(null);
+  const [heldOrders, setHeldOrders] = useState([]);
+  const [showCashCalc, setShowCashCalc] = useState(false);
+  const [transactionNotes, setTransactionNotes] = useState('');
+  const [showAddProduct, setShowAddProduct] = useState(false);
+  const [formData, setFormData] = useState({ name: '', price: '', stock: '', category: '', variants: '', image: '' });
+  const [historySearch, setHistorySearch] = useState('');
+  const [historyDateFilter, setHistoryDateFilter] = useState('all');
+  const [activeCashier, setActiveCashier] = useState(localStorage.getItem('activeCashier') || '');
+  const [activeCaptain, setActiveCaptain] = useState('');
+  const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('activeCashier'));
+  const [dialog, setDialog] = useState(null); // { title, message, onConfirm, onCancel, type: 'alert' | 'confirm' }
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
@@ -513,55 +587,73 @@ function App() {
 
   const fetchSettings = useCallback(async () => {
     try {
-      const all = await db.settings.toArray();
-      const config = {
-        storeName: 'Smart Cashier',
-        storeAddress: 'Jl. Utama No. 123',
-        taxRate: 11,
-        memberDiscount: 5,
-        themeColor: '#6366f1',
-        isCustomerDisplayOn: true,
-        welcomeText: 'Selamat Datang / Welcome',
-        qrisImage: ''
-      };
-      all.forEach(s => config[s.key] = s.value);
-      setSettings(config);
+      const { data: s, error } = await supabase.from('settings').select('*').single();
+      if (error) throw error;
+      
+      if (s) {
+        setSettings(s);
+        if (s.is_dark !== undefined) setIsDark(s.is_dark);
+        // Apply theme color
+        if (s.primary_color) {
+          document.documentElement.style.setProperty('--primary', s.primary_color);
+          document.documentElement.style.setProperty('--primary-soft', s.primary_color + '26');
+        }
+      }
     } catch (err) {
       console.error('Failed to fetch settings:', err);
-      if (err.name === 'DatabaseClosedError') {
-        await db.open().catch(() => {});
-      }
     }
   }, []);
 
-  const updateSetting = useCallback(async (key, value) => {
-    try {
-      await db.settings.put({ key, value });
-      fetchSettings();
-    } catch (err) {
-      console.error('Failed to update setting:', err);
-      if (err.name === 'DatabaseClosedError') {
-        await db.open().catch(() => {});
-        await db.settings.put({ key, value }).catch(() => {});
-        fetchSettings();
-      }
+  const updateSetting = async (key, value) => {
+    const newSettings = { ...settings, [key]: value };
+    setSettings(newSettings);
+    
+    // Update local theme immediately if color or theme changed
+    if (key === 'primary_color') {
+      document.documentElement.style.setProperty('--primary', value);
+      document.documentElement.style.setProperty('--primary-soft', value + '26');
     }
-  }, [fetchSettings]);
+    
+    // Save to Supabase
+    let settingsId = settings?.id;
+    if (!settingsId) {
+       const { data } = await supabase.from('settings').select('id').single();
+       settingsId = data?.id;
+    }
+
+    if (settingsId) {
+      const { error } = await supabase.from('settings').update({ [key]: value }).eq('id', settingsId);
+      if (error) console.error("Failed to update setting:", error);
+    }
+    
+    // Notify other views (Kitchen, Customer)
+    const bc = new BroadcastChannel('customer_display');
+    bc.postMessage({ [key]: value });
+    bc.close();
+  };
 
   const fetchProducts = useCallback(async () => {
-    const all = await db.products.toArray();
-    setProducts(all);
+    const { data, error } = await supabase.from('products').select('*').order('name');
+    if (!error) setProducts(data);
   }, []);
 
   const fetchMembers = useCallback(async () => {
-    const all = await db.members.toArray();
-    setMembers(all);
+    const { data, error } = await supabase.from('members').select('*').order('name');
+    if (!error) setMembers(data);
   }, []);
 
   const fetchTransactions = useCallback(async () => {
-    const all = await db.transactions.reverse().toArray();
-    setTransactions(all);
+    const { data, error } = await supabase.from('transactions').select('*').order('timestamp', { ascending: false });
+    if (!error) setTransactions(data);
   }, []);
+
+  const customConfirm = (title, message, onConfirm) => {
+    setDialog({ title, message, onConfirm, type: 'confirm' });
+  };
+
+  const customAlert = (title, message) => {
+    setDialog({ title, message, type: 'alert' });
+  };
   
   useEffect(() => {
     localStorage.setItem('activeTab', activeTab);
@@ -601,33 +693,37 @@ function App() {
     if (!isRgbUserChange.current) return;
     isRgbUserChange.current = false;
     const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-    updateSetting('themeColor', hex);
+    updateSetting('primary_color', hex);
   }, [rgb, updateSetting]);
 
   // 3. Sinkronisasi dari Settings (saat load pertama)
   useEffect(() => {
-    if (settings.themeColor) {
-      const newRgb = hexToRgb(settings.themeColor);
+    if (settings.primary_color) {
+      const newRgb = hexToRgb(settings.primary_color);
       setRgb(prev => {
         if (prev.r === newRgb.r && prev.g === newRgb.g && prev.b === newRgb.b) return prev;
         return newRgb;
       });
     }
-  }, [settings.themeColor]);
+  }, [settings.primary_color]);
 
   // 4. Sinkronisasi Dark Mode
   useEffect(() => {
     if (isDark) {
       document.body.classList.add('dark');
-      localStorage.setItem('theme', 'dark');
     } else {
       document.body.classList.remove('dark');
-      localStorage.setItem('theme', 'light');
+    }
+    // Only update if it actually changed in settings
+    if (settings.is_dark !== isDark) {
+      updateSetting('is_dark', isDark);
     }
   }, [isDark]);
-  
 
-  const [formData, setFormData] = useState({ name: '', price: '', stock: '', category: '', variants: '' });
+  useEffect(() => {
+    localStorage.setItem('activeCashier', activeCashier);
+  }, [activeCashier]);
+
   const [memberFormData, setMemberFormData] = useState({ name: '', phone: '' });
   const [editingProduct, setEditingProduct] = useState(null);
   const [productToSelectVariant, setProductToSelectVariant] = useState(null);
@@ -657,19 +753,58 @@ function App() {
   const handleUpdateProduct = async (e) => {
     e.preventDefault();
     if (!editingProduct) return;
-    await db.products.update(editingProduct.id, {
+    const { error } = await supabase.from('products').update({
       name: editingProduct.name,
       price: parseInt(editingProduct.price),
       stock: parseInt(editingProduct.stock),
       category: editingProduct.category,
       variants: editingProduct.variants
-    });
-    setEditingProduct(null);
-    fetchProducts();
-    setEditingProduct(null);
-    fetchProducts();
-    showToast('Produk berhasil diperbarui!');
+    }).eq('id', editingProduct.id);
+    
+    if (!error) {
+      setEditingProduct(null);
+      fetchProducts();
+      showToast('Produk berhasil diperbarui!');
+    }
   };
+
+  // === ADD PRODUCT ===
+  const handleAddProduct = async (e) => {
+    e.preventDefault();
+    if (!formData.name || !formData.price || !formData.stock) return;
+    const { error } = await supabase.from('products').insert({
+      name: formData.name, price: parseInt(formData.price), stock: parseInt(formData.stock),
+      category: formData.category || 'Umum', variants: formData.variants || '', image: formData.image || ''
+    });
+    if (!error) {
+      setFormData({ name: '', price: '', stock: '', category: '', variants: '', image: '' });
+      setShowAddProduct(false);
+      fetchProducts();
+      showToast('Produk baru berhasil ditambahkan!');
+    }
+  };
+
+  // === HOLD / RESUME ORDER ===
+  const holdCurrentOrder = useCallback(() => {
+    if (cart.length === 0) return;
+    setHeldOrders(prev => [...prev, { id: Date.now(), timestamp: new Date().toISOString(), customerName: customerName || 'Umum', items: [...cart], total: cart.reduce((a,i) => a + i.price*i.qty, 0), notes: transactionNotes }]);
+    setCart([]); setCustomerName(''); setTransactionNotes(''); setMemberPhone(''); setActiveMember(null);
+    setCheckoutKey(k => k + 1);
+    showToast('Pesanan berhasil ditahan!');
+  }, [cart, customerName, transactionNotes, showToast]);
+
+  const resumeOrder = useCallback((heldId) => {
+    const order = heldOrders.find(h => h.id === heldId);
+    if (!order) return;
+    setCart(order.items); setCustomerName(order.customerName); setTransactionNotes(order.notes || '');
+    setHeldOrders(prev => prev.filter(h => h.id !== heldId));
+    showToast('Pesanan dilanjutkan!');
+  }, [heldOrders, showToast]);
+
+  const removeHeldOrder = useCallback((heldId) => {
+    setHeldOrders(prev => prev.filter(h => h.id !== heldId));
+    showToast('Pesanan yang ditahan dihapus.');
+  }, [showToast]);
 
   const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
   const taxAmount = subtotal * (parseInt(settings.taxRate) / 100);
@@ -680,7 +815,14 @@ function App() {
     if (cart.length === 0 || isProcessing) return;
     setIsProcessing(true);
     
-    // Jika bayar menggunakan QRIS dan modal QRIS belum muncul, tampilkan modal dulu
+    // Cash: show calculator first
+    if (paymentMethod === 'Cash' && !showCashCalc && !showQRISModal) {
+      setShowCashCalc(true);
+      setIsProcessing(false);
+      return;
+    }
+
+    // QRIS: show QR modal first
     if (paymentMethod === 'QRIS' && !showQRISModal) {
       setShowQRISModal(true);
       setIsProcessing(false);
@@ -688,22 +830,37 @@ function App() {
     }
 
     try {
-      // Simpan transaksi
-      const newTransaction = { 
-        timestamp: new Date().toISOString(), 
-        total, 
-        customerName: customerName || 'Umum',
-        memberId: activeMember ? activeMember.id : null,
-        paymentMethod: paymentMethod,
-        items: cart.map(i => ({ name: i.name, price: i.price, qty: i.qty, variant: i.selectedVariant }))
+      const transaction = {
+        timestamp: new Date().toISOString(),
+        total: total,
+        subtotal: subtotal,
+        tax: taxAmount,
+        discount: discount,
+        customer_name: customerName || 'Umum',
+        member_phone: activeMember ? activeMember.phone : null,
+        payment_method: paymentMethod,
+        items: cart.map(item => ({ name: item.name, price: item.price, qty: item.qty, selectedVariant: item.selectedVariant })),
+        notes: transactionNotes,
+        status: 'preparing',
+        cashier_name: activeCashier || 'Admin',
+        captain_name: activeCaptain || 'Self'
       };
 
-      const id = await db.transactions.add(newTransaction);
-      const savedTransaction = { ...newTransaction, id };
+      const { data, error } = await supabase.from('transactions').insert(transaction).select();
+      if (error) throw error;
+      const savedTransaction = data[0];
       
-      // Update stok secara sekuensial
+      // Notify Kitchen (via Real-time, but BroadcastChannel still used for same-browser sync)
+      const kitchenChannel = new BroadcastChannel('kitchen_display');
+      kitchenChannel.postMessage({ type: 'NEW_ORDER', order: savedTransaction });
+      kitchenChannel.close();
+
+      // Update stok secara sekuensial di Supabase
       for (const item of cart) {
-        await db.products.where('id').equals(item.id).modify(p => { p.stock -= item.qty; });
+        const product = products.find(p => p.id === item.id);
+        if (product) {
+          await supabase.from('products').update({ stock: product.stock - item.qty }).eq('id', item.id);
+        }
       }
       
       // Kirim data ke Customer Display DULU sebelum hapus cart
@@ -719,18 +876,20 @@ function App() {
         setShowQRISModal(false);
         setActiveTransactionId(null);
         setIsProcessing(false);
+        setShowCashCalc(false);
+        setTransactionNotes('');
         
         fetchProducts(); 
         fetchTransactions();
         setCheckoutKey(k => k + 1);
       }, 500);
       
-    } catch (e) { 
-      console.error(e);
-      alert('Gagal memproses transaksi.'); 
+    } catch (err) {
+      console.error(err);
+      customAlert('Error', 'Gagal memproses transaksi.');
       setIsProcessing(false);
     }
-  }, [cart, customerName, activeMember, paymentMethod, showQRISModal, total, settings, fetchProducts, fetchTransactions, isProcessing]);
+  }, [cart, customerName, activeMember, paymentMethod, transactionNotes, discount, activeCashier, activeCaptain, showToast, total, showCashCalc, showQRISModal, isProcessing]);
 
   // Sync with Customer Display
     useEffect(() => {
@@ -760,22 +919,84 @@ function App() {
         qrisData: settings.qrisImage,
         isLoadingQR: false,
         lastTransaction: lastTransaction,
-        storeAddress: settings.storeAddress
+        storeAddress: settings.storeAddress,
+        cashierName: activeCashier
       });
       return () => channel.close();
-    }, [cart, activeMember, settings, customerName, isDark, customerViewMode, products, showReceipt, lastTransaction, showQRISModal, rgb]);
+    }, [cart, activeMember, settings, customerName, isDark, customerViewMode, products, showReceipt, lastTransaction, showQRISModal, rgb, activeCashier]);
 
   useEffect(() => {
     const findMember = async () => {
       if (memberPhone.length >= 10) {
-        const found = await db.members.where('phone').equals(memberPhone).first();
-        setActiveMember(found || null);
+        const { data, error } = await supabase.from('members').select('*').eq('phone', memberPhone).maybeSingle();
+        if (!error) setActiveMember(data || null);
       } else {
         setActiveMember(null);
       }
     };
     findMember();
   }, [memberPhone]);
+
+  useEffect(() => {
+    const handleGlobalShortcuts = (e) => {
+      // Focus Search: Ctrl + K
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+        e.preventDefault();
+        document.querySelector('.search-box')?.focus();
+      }
+      
+      // Hold Order: Ctrl + H
+      if ((e.ctrlKey || e.metaKey) && e.key === 'h' && activeTab === 'pos') {
+        e.preventDefault();
+        holdCurrentOrder();
+      }
+
+      // Print Receipt: Ctrl + P
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p' && showReceipt) {
+        e.preventDefault();
+        window.print();
+      }
+
+      // Tab Switching: Ctrl + 1-5
+      if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '5') {
+        const tabs = ['dashboard', 'pos', 'stock', 'members', 'history'];
+        setActiveTab(tabs[parseInt(e.key) - 1]);
+      }
+
+      // Quick Checkout / Confirm: Enter
+      if (e.key === 'Enter') {
+        if (dialog) {
+          if (dialog.onConfirm) dialog.onConfirm();
+          setDialog(null);
+          setTimeout(() => document.querySelector('.search-box')?.focus(), 100);
+          return;
+        }
+        // Only trigger checkout if no modals are open and we are in POS tab
+        if (activeTab === 'pos' && cart.length > 0 && !isProcessing && !showReceipt && !showCashCalc && !showQRISModal) {
+          // If not in input/textarea (except search)
+          if (document.activeElement.tagName !== 'INPUT' || document.activeElement.classList.contains('search-box')) {
+            handleCheckout();
+          }
+        }
+      }
+
+      // Close Modals & Dialogs: Escape
+      if (e.key === 'Escape') {
+        if (dialog) {
+          setDialog(null);
+          return;
+        }
+        setShowCashCalc(false);
+        setShowQRISModal(false);
+        setEditingProduct(null);
+        setProductToSelectVariant(null);
+        if (showReceipt) setShowReceipt(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, [activeTab, cart.length, isProcessing, showReceipt, showCashCalc, total, holdCurrentOrder, handleCheckout]);
 
   useEffect(() => {
     const init = async () => {
@@ -790,9 +1011,44 @@ function App() {
 
 
 
+  const sendToKitchen = async () => {
+    if (cart.length === 0) return;
+    try {
+      const transaction = {
+        timestamp: new Date().toISOString(),
+        total: total,
+        customerName: customerName || 'Umum',
+        memberId: activeMember ? activeMember.id : null,
+        payment_method: 'Dapur (Pending)',
+        items: cart.map(item => ({ name: item.name, price: item.price, qty: item.qty, selectedVariant: item.selectedVariant })),
+        notes: transactionNotes,
+        discount: discount,
+        status: 'preparing',
+        cashier_name: activeCashier || 'Admin',
+        captain_name: activeCaptain || 'Self'
+      };
+      const { data, error } = await supabase.from('transactions').insert(transaction).select();
+      if (error) throw error;
+      const id = data[0].id;
+      
+      const kitchenChannel = new BroadcastChannel('kitchen_display');
+      kitchenChannel.postMessage({ type: 'NEW_ORDER', order: { ...transaction, id } });
+      kitchenChannel.close();
+
+      showToast('Pesanan dikirim ke Dapur!');
+      setCart([]);
+      setCustomerName('');
+      setTransactionNotes('');
+      setActiveCaptain('');
+    } catch (err) {
+      console.error(err);
+      showToast('Gagal mengirim ke dapur', 'error');
+    }
+  };
+
   const exportToExcel = () => {
     if (transactions.length === 0) {
-      alert('Tidak ada data transaksi untuk diekspor.');
+      customAlert('Ekspor', 'Tidak ada data transaksi untuk diekspor.');
       return;
     }
 
@@ -815,12 +1071,101 @@ function App() {
     XLSX.writeFile(workbook, `Laporan_Penjualan_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
+  const handleLogin = (name) => {
+    setActiveCashier(name);
+    setIsLoggedIn(true);
+    
+    // Windows are now opened automatically on app startup as per latest request.
+    // If they were closed, they can be re-opened from the Settings menu.
+  };
+
+  const handleLogout = () => {
+    customConfirm('Ganti Kasir', 'Apakah Anda yakin ingin mengganti kasir (Log Out)?', () => {
+      setIsLoggedIn(false);
+      setActiveCashier('');
+      localStorage.removeItem('activeCashier');
+    });
+  };
+
+  const handleExit = () => {
+    customConfirm('Keluar', 'Apakah Anda yakin ingin keluar dari aplikasi?', () => {
+      if (window.require) {
+        const { ipcRenderer } = window.require('electron');
+        ipcRenderer.send('quit-app');
+      } else {
+        window.close();
+      }
+    });
+  };
+
+  const toggleDarkMode = () => {
+    const newMode = !isDark;
+    setIsDark(newMode);
+    updateSetting('is_dark', newMode);
+  };
+
+  if (!isLoggedIn) {
+    return (
+      <div style={{
+        height: '100vh', width: '100vw', background: 'var(--bg-app)',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        flexDirection: 'column', gap: '2rem'
+      }}>
+        <div style={{
+          background: 'var(--bg-card)', padding: '3rem', borderRadius: '32px',
+          boxShadow: 'var(--shadow-lg)', border: '1px solid var(--border)',
+          width: '400px', textAlign: 'center', animation: 'fadeIn 0.5s ease-out'
+        }}>
+          <div style={{
+            width: '80px', height: '80px', background: 'var(--primary-soft)',
+            color: 'var(--primary)', borderRadius: '24px', margin: '0 auto 1.5rem',
+            display: 'flex', alignItems: 'center', justifyContent: 'center'
+          }}>
+            <IconStore />
+          </div>
+          <h1 style={{fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem'}}>Luma POS</h1>
+          <p style={{color: 'var(--text-muted)', marginBottom: '2rem'}}>Silakan masukkan nama kasir yang bertugas</p>
+          
+          <input 
+            type="text" 
+            placeholder="Nama Kasir" 
+            autoFocus
+            style={{
+              width: '100%', padding: '1.2rem', fontSize: '1.1rem', 
+              borderRadius: '16px', border: '2px solid var(--border)',
+              background: 'var(--bg-app)', color: 'var(--text-main)',
+              textAlign: 'center', fontWeight: 700, marginBottom: '1.5rem'
+            }}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && e.target.value) handleLogin(e.target.value);
+            }}
+          />
+          
+          <button 
+            onClick={() => {
+              const input = document.querySelector('input[placeholder="Nama Kasir"]');
+              if (input.value) handleLogin(input.value);
+            }}
+            className="btn btn-primary"
+            style={{width: '100%', padding: '1.2rem', borderRadius: '16px', fontWeight: 800}}
+          >
+            MASUK KE SISTEM
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="pos-layout">
       {/* Sidebar -  Branding */}
       <aside className="app-sidebar">
-        <button className={`nav-link ${activeTab === 'pos' ? 'active' : ''}`} onClick={() => setActiveTab('pos')} title="Kasir">
+        <button className={`nav-link ${activeTab === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveTab('dashboard')} title="Dashboard">
+          <IconDashboard />
+        </button>
+        <button className={`nav-link ${activeTab === 'pos' ? 'active' : ''}`} onClick={() => setActiveTab('pos')} title="Kasir" style={{position: 'relative'}}>
           <IconStore />
+          {heldOrders.length > 0 && <div style={{position:'absolute',top:'-4px',right:'-4px',width:'18px',height:'18px',borderRadius:'50%',background:'var(--warning)',color:'white',fontSize:'0.65rem',fontWeight:800,display:'flex',alignItems:'center',justifyContent:'center'}}>{heldOrders.length}</div>}
         </button>
         <button className={`nav-link ${activeTab === 'stock' ? 'active' : ''}`} onClick={() => setActiveTab('stock')} title="Stok">
           <IconBox />
@@ -831,7 +1176,7 @@ function App() {
         <button className={`nav-link ${activeTab === 'history' ? 'active' : ''}`} onClick={() => setActiveTab('history')} title="Histori">
           <IconHistory />
         </button>
-        <div style={{marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem', alignItems: 'center'}}>
+        <div style={{marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'center', width: '100%'}}>
           <button 
             className={`nav-link ${customerViewMode === 'menu' ? 'active' : ''}`} 
             onClick={() => setCustomerViewMode(prev => prev === 'cart' ? 'menu' : 'cart')} 
@@ -840,32 +1185,61 @@ function App() {
           >
             <IconMenu />
           </button>
-          <button className="nav-link" onClick={() => setIsDark(!isDark)} style={{background: 'var(--primary-soft)', color: 'var(--primary)'}}>
+          <button className="nav-link" onClick={toggleDarkMode} style={{background: 'var(--primary-soft)', color: 'var(--primary)'}}>
             {isDark ? <IconSun /> : <IconMoon />}
           </button>
           <button className={`nav-link ${activeTab === 'settings' ? 'active' : ''}`} onClick={() => setActiveTab('settings')} title="Pengaturan">
             <IconSettings />
           </button>
+          
+          <div style={{width: '70%', height: '1px', background: 'var(--border)', margin: '0.5rem 0'}}></div>
+
+          <button className="nav-link" onClick={handleLogout} title="Ganti Kasir (Shift Change)" style={{color: 'var(--warning)', background: 'rgba(245, 158, 11, 0.1)'}}>
+            <IconUsers />
+          </button>
+          <button className="nav-link" onClick={handleExit} title="Keluar Aplikasi" style={{color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.1)'}}>
+            <IconPower />
+          </button>
+
+          <div style={{marginTop: '1rem', padding: '0.8rem', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border)', width: 'calc(100% - 1rem)', textAlign: 'center'}}>
+            <div style={{fontWeight: 800, fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-main)'}}>{activeCashier}</div>
+            <div style={{fontSize: '0.6rem', color: 'var(--primary)', fontWeight: 700}}>Luma POS</div>
+          </div>
         </div>
       </aside>
 
       {/* Main Container */}
       <main className="main-content">
+        {activeTab === 'dashboard' && <Dashboard settings={settings} />}
+
         {activeTab === 'pos' && (
           <>
             <header className="header-minimal">
               <div>
-                <h1>{settings.storeName}</h1>
+                <h1>{settings.store_name}</h1>
                 <p style={{color: 'var(--text-muted)'}}>{settings.storeAddress}</p>
               </div>
-              <input 
-                type="text" 
-                placeholder="Cari produk di sini..." 
-                className="search-box"
-                value={search}
-                onChange={e => setSearch(e.target.value)}
-              />
+              <div style={{display:'flex',alignItems:'center',gap:'1rem'}}>
+                <input 
+                  type="text" 
+                  placeholder="Cari produk... (Ctrl+K)" 
+                  className="search-box"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                />
+              </div>
             </header>
+            {heldOrders.length > 0 && (
+              <div className="held-orders-bar">
+                {heldOrders.map(h => (
+                  <div key={h.id} className="held-order-chip" onClick={() => resumeOrder(h.id)}>
+                    <span style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}><Pause size={14} /> {h.customerName}</span>
+                    <span style={{opacity:0.7}}>Rp {h.total.toLocaleString()}</span>
+                    <button onClick={e => {e.stopPropagation();removeHeldOrder(h.id)}} style={{background:'transparent',border:'none',color:'var(--danger)',fontWeight:800,cursor:'pointer',padding:'0 4px',display:'flex',alignItems:'center'}}><X size={14} /></button>
+                  </div>
+                ))}
+              </div>
+            )}
 
               <div style={{display: 'flex', gap: '1rem', overflowX: 'auto', paddingBottom: '1rem', marginBottom: '2rem'}} className="hide-scrollbar">
                 {categories.map(cat => (
@@ -988,9 +1362,9 @@ function App() {
                 <h2 style={{fontSize: '2rem'}}>Histori Penjualan</h2>
                 <button 
                   onClick={exportToExcel}
-                  style={{background: 'var(--primary-soft)', color: 'var(--primary)', padding: '0.8rem 1.5rem', fontWeight: 700, borderRadius: '12px'}}
+                  style={{background: 'var(--primary-soft)', color: 'var(--primary)', padding: '0.8rem 1.5rem', fontWeight: 700, borderRadius: '12px', display: 'flex', alignItems: 'center', gap: '0.5rem'}}
                 >
-                  📥 Ekspor ke Excel (.xlsx)
+                  <Download size={18} /> Ekspor ke Excel (.xlsx)
                 </button>
               </div>
               <table style={{width: '100%', borderCollapse: 'separate', borderSpacing: '0 10px'}}>
@@ -1008,10 +1382,10 @@ function App() {
                     <tr key={t.id} style={{background: 'var(--bg-app)'}}>
                       <td style={{padding: '1.5rem', borderRadius: '16px 0 0 16px'}}>
                         <div style={{fontWeight: 600}}>{new Date(t.timestamp).toLocaleString()}</div>
-                        <div style={{fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700}}>{t.paymentMethod || 'Cash'}</div>
+                        <div style={{fontSize: '0.75rem', color: 'var(--primary)', fontWeight: 700}}>{t.payment_method || 'Cash'}</div>
                       </td>
                     <td style={{fontFamily: 'monospace'}}>#transaction-{t.id}</td>
-                    <td style={{fontWeight: 600}}>{t.customerName} {t.memberId ? '(Member)' : ''}</td>
+                    <td style={{fontWeight: 600}}>{t.customer_name} {t.member_id ? '(Member)' : ''}</td>
                     <td style={{fontWeight: 700, color: 'var(--primary)'}}>Rp {t.total.toLocaleString()}</td>
                     <td style={{textAlign: 'right', borderRadius: '0 16px 16px 0', paddingRight: '1.5rem'}}>
                       <div style={{display: 'flex', gap: '0.5rem', justifyContent: 'flex-end'}}>
@@ -1027,19 +1401,12 @@ function App() {
                         >
                           <IconEye />
                         </button>
-                        <button 
-                          title="Hapus Transaksi"
-                          style={{background: '#fef2f2', color: '#ef4444', width: '42px', height: '42px', borderRadius: '12px', display: 'flex', alignItems: 'center', justifyContent: 'center', border: 'none', cursor: 'pointer', transition: 'all 0.2s'}}
-                          onClick={async () => {
-                            if (confirm('Hapus transaksi ini?')) {
-                              await db.transactions.delete(t.id);
-                              fetchTransactions();
-                              window.location.reload();
-                            }
-                          }}
-                          onMouseOver={e => e.currentTarget.style.transform = 'scale(1.1)'}
-                          onMouseOut={e => e.currentTarget.style.transform = 'scale(1)'}
-                        >
+                        <button className="btn-circle" style={{color: '#ef4444'}} onClick={() => {
+                          customConfirm('Hapus Transaksi', 'Hapus transaksi ini?', async () => {
+                            await supabase.from('transactions').delete().eq('id', t.id);
+                            fetchTransactions();
+                          });
+                        }}>
                           <IconTrash />
                         </button>
                       </div>
@@ -1069,9 +1436,12 @@ function App() {
             </div>
             <form style={{display: 'flex', gap: '1.25rem', marginBottom: '4rem'}} onSubmit={async (e) => {
               e.preventDefault();
-              await db.products.add({ ...formData, price: parseInt(formData.price), stock: parseInt(formData.stock) });
-              setFormData({ name: '', price: '', stock: '', category: '', variants: '' }); fetchProducts();
-              showToast('Produk berhasil ditambahkan!');
+              const { error } = await supabase.from('products').insert({ ...formData, price: parseInt(formData.price), stock: parseInt(formData.stock) });
+              if (!error) {
+                setFormData({ name: '', price: '', stock: '', category: '', variants: '', image: '' }); 
+                fetchProducts();
+                showToast('Produk berhasil ditambahkan!');
+              }
             }}>
               <input 
                 style={{flex: 2, padding: '1.2rem', fontSize: '1.1rem', fontWeight: 600}} 
@@ -1145,7 +1515,12 @@ function App() {
                       >
                         Edit
                       </button>
-                      <button style={{color: '#ef4444', background: '#fef2f2', padding: '0.5rem 1rem'}} onClick={async () => { if(confirm('Hapus produk ini?')) { await db.products.delete(p.id); fetchProducts(); window.location.reload(); } }}>Hapus</button>
+                      <button style={{color: '#ef4444', background: '#fef2f2', padding: '0.5rem 1rem', borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: 700}} onClick={() => {
+                        customConfirm('Hapus Produk', 'Hapus produk ini?', async () => {
+                          await supabase.from('products').delete().eq('id', p.id);
+                          fetchProducts();
+                        });
+                      }}>Hapus</button>
                     </td>
                   </tr>
                 ))}
@@ -1170,9 +1545,14 @@ function App() {
             
             <form style={{display: 'flex', gap: '1.25rem', marginBottom: '4rem'}} onSubmit={async (e) => {
               e.preventDefault();
-              await db.members.add({ ...memberFormData });
-              setMemberFormData({ name: '', phone: '' }); fetchMembers();
-              showToast('Member baru berhasil didaftarkan!');
+              const { error } = await supabase.from('members').insert({ ...memberFormData });
+              if (!error) {
+                setMemberFormData({ name: '', phone: '' }); 
+                fetchMembers();
+                showToast('Member baru berhasil didaftarkan!');
+              } else {
+                showToast('Gagal daftar member (Mungkin nomor HP sudah ada)', 'error');
+              }
             }}>
               <input 
                 style={{flex: 1, padding: '1.2rem', fontSize: '1.1rem', fontWeight: 600}} 
@@ -1213,7 +1593,12 @@ function App() {
                     <td style={{padding: '1.5rem', borderRadius: '16px 0 0 16px', fontWeight: 600}}>{m.name}</td>
                     <td style={{fontWeight: 700}}>{m.phone}</td>
                     <td style={{textAlign: 'right', borderRadius: '0 16px 16px 0', paddingRight: '1.5rem'}}>
-                      <button style={{color: '#ef4444', background: '#fef2f2', padding: '0.5rem 1rem'}} onClick={async () => { if(confirm('Hapus member ini?')) { await db.members.delete(m.id); fetchMembers(); window.location.reload(); } }}>Hapus</button>
+                      <button style={{color: '#ef4444', background: '#fef2f2', padding: '0.5rem 1rem', borderRadius: '12px', border: 'none', cursor: 'pointer', fontWeight: 700}} onClick={() => {
+                        customConfirm('Hapus Member', 'Hapus member ini?', async () => {
+                          await supabase.from('members').delete().eq('id', m.id);
+                          fetchMembers();
+                        });
+                      }}>Hapus</button>
                     </td>
                   </tr>
                 ))}
@@ -1223,245 +1608,20 @@ function App() {
         )}
 
         {activeTab === 'settings' && (
-          <div style={{background: 'var(--bg-card)', padding: '4rem', borderRadius: '32px', flex: 1, boxShadow: 'var(--shadow-main)', overflowY: 'auto'}}>
-            <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '4rem', paddingBottom: '2rem', borderBottom: '1px solid var(--border)'}}>
-              <div>
-                <h2 style={{fontSize: '2.5rem', fontWeight: 800}}>Pengaturan Umum</h2>
-                <p style={{color: 'var(--text-muted)'}}>Kelola identitas toko dan personalisasi sistem</p>
-              </div>
-              <div style={{textAlign: 'right', display: 'flex', alignItems: 'center', gap: '1.5rem'}}>
-                <div style={{textAlign: 'right'}}>
-                  <div style={{fontSize: '1.2rem', fontWeight: 800, color: 'var(--text-main)'}}>Smart Cashier</div>
-                  <div style={{fontSize: '0.9rem', color: 'var(--primary)', fontWeight: 700}}>Version {pkg.version}</div>
-                </div>
-              </div>
-            </div>
-            
-            <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '4rem'}}>
-              <div style={{display: 'flex', flexDirection: 'column', gap: '2rem'}}>
-                <h3 style={{fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--primary)'}}>Informasi Toko</h3>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                  <label style={{fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)'}}>NAMA TOKO</label>
-                  <input 
-                    style={{padding: '1.2rem', fontSize: '1.1rem', fontWeight: 600}}
-                    value={settings.storeName} 
-                    onChange={e => updateSetting('storeName', e.target.value)} 
-                  />
-                </div>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                  <label style={{fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)'}}>ALAMAT LENGKAP</label>
-                  <input 
-                    style={{padding: '1.2rem', fontSize: '1.1rem'}}
-                    value={settings.storeAddress} 
-                    onChange={e => updateSetting('storeAddress', e.target.value)} 
-                  />
-                </div>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                  <label style={{fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)'}}>TEKS UCAPAN (WELCOME)</label>
-                  <input 
-                    style={{padding: '1.2rem', fontSize: '1.1rem', fontWeight: 600}}
-                    value={settings.welcomeText || 'Selamat Datang / Welcome'} 
-                    onChange={e => updateSetting('welcomeText', e.target.value)} 
-                  />
-                </div>
-              </div>
-
-              <div style={{display: 'flex', flexDirection: 'column', gap: '2rem'}}>
-                <h3 style={{fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--primary)'}}>Keuangan & Pajak</h3>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                  <label style={{fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)'}}>PERSENTASE PAJAK (%)</label>
-                  <input 
-                    type="number" 
-                    style={{padding: '1.2rem', fontSize: '1.1rem', fontWeight: 600}}
-                    value={settings.taxRate} 
-                    onChange={e => updateSetting('taxRate', e.target.value)} 
-                  />
-                </div>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                  <label style={{fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)'}}>DISKON MEMBER (%)</label>
-                  <input 
-                    type="number" 
-                    style={{padding: '1.2rem', fontSize: '1.1rem', fontWeight: 600}}
-                    value={settings.memberDiscount} 
-                    onChange={e => updateSetting('memberDiscount', e.target.value)} 
-                  />
-                </div>
-                <div style={{display: 'flex', flexDirection: 'column', gap: '0.75rem'}}>
-                  <label style={{fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)'}}>URL GAMBAR QRIS (MANUAL)</label>
-                  <input 
-                    type="text" 
-                    placeholder="https://link-gambar-qris-anda.com/qris.jpg"
-                    style={{padding: '1.2rem', fontSize: '1.1rem'}}
-                    value={settings.qrisImage || ''} 
-                    onChange={e => updateSetting('qrisImage', e.target.value)} 
-                  />
-                  <p style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>Upload gambar QRIS Anda ke hosting gambar (seperti Imgur atau PostImages) lalu tempel link-nya di sini.</p>
-                </div>
-              </div>
-            </div>
-
-            <div style={{marginTop: '4rem', padding: '2rem', background: 'var(--bg-app)', borderRadius: '24px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-              <div>
-                <h3 style={{fontSize: '1.5rem', marginBottom: '0.5rem', color: 'var(--primary)'}}>Layar Pelanggan (Customer View)</h3>
-                <p style={{color: 'var(--text-muted)'}}>Aktifkan atau matikan tampilan layar untuk pelanggan.</p>
-              </div>
-              <div style={{display: 'flex', gap: '1rem', alignItems: 'center'}}>
-                <button 
-                  onClick={() => window.open(window.location.origin + window.location.pathname + '#customer-view', '_blank', 'width=1200,height=800')}
-                  style={{background: 'var(--primary-soft)', color: 'var(--primary)', padding: '0.8rem 1.5rem', fontWeight: 700, borderRadius: '12px'}}
-                >
-                  Buka Layar Pelanggan ↗
-                </button>
-                <button 
-                  onClick={() => updateSetting('isCustomerDisplayOn', settings.isCustomerDisplayOn === false ? true : false)}
-                  style={{
-                    background: settings.isCustomerDisplayOn === false ? '#ef4444' : '#22c55e', 
-                    color: 'white', 
-                    padding: '0.8rem 2rem', 
-                    fontWeight: 800, 
-                    borderRadius: '12px',
-                    minWidth: '160px',
-                    boxShadow: settings.isCustomerDisplayOn === false ? '0 10px 15px -3px #ef444455' : '0 10px 15px -3px #22c55e55'
-                  }}
-                >
-                  {settings.isCustomerDisplayOn === false ? 'MATI (OFF)' : 'HIDUP (ON)'}
-                </button>
-              </div>
-            </div>
-
-            <div style={{marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid var(--border)'}}>
-              <h3 style={{fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--primary)'}}>Personalisasi Tema</h3>
-              <p style={{color: 'var(--text-muted)', marginBottom: '1.5rem'}}>Atur warna tema dengan nilai RGB sesuai brand toko kamu:</p>
-              
-              {/* Visual Color Picker & Preview Box */}
-              <div style={{display: 'flex', alignItems: 'center', gap: '2rem', marginBottom: '2.5rem', background: 'var(--bg-app)', padding: '1.5rem', borderRadius: '24px', border: '1px solid var(--border)'}}>
-                <div style={{ position: 'relative', flexShrink: 0 }}>
-                  <div style={{
-                    width: '90px', height: '90px', borderRadius: '22px',
-                    background: rgbToHex(rgb.r, rgb.g, rgb.b),
-                    boxShadow: `0 12px 30px ${rgbToHex(rgb.r, rgb.g, rgb.b)}55`,
-                    transition: 'background 0.2s, box-shadow 0.2s',
-                    cursor: 'pointer',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    border: '4px solid white',
-                  }}>
-                    <input 
-                      type="color" 
-                      value={rgbToHex(rgb.r, rgb.g, rgb.b)}
-                      onChange={e => {
-                        isRgbUserChange.current = true;
-                        setRgb(hexToRgb(e.target.value));
-                      }}
-                      style={{
-                        position: 'absolute', inset: 0, opacity: 0, width: '100%', height: '100%', cursor: 'pointer'
-                      }}
-                    />
-                    <div style={{fontSize: '1.5rem', filter: 'invert(1) grayscale(1) contrast(9)'}}>🎨</div>
-                  </div>
-                  <div style={{
-                    position: 'absolute', bottom: '-10px', right: '-10px', 
-                    background: 'var(--primary)', color: 'white', padding: '4px 8px', 
-                    borderRadius: '8px', fontSize: '0.65rem', fontWeight: 800
-                  }}>PICK</div>
-                </div>
-
-                <div style={{flex: 1}}>
-                  <div style={{fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.5rem'}}>Warna Aktif</div>
-                  <div style={{display: 'flex', alignItems: 'baseline', gap: '1rem'}}>
-                    <div style={{fontFamily: 'monospace', fontSize: '2rem', fontWeight: 800, color: 'var(--text-main)'}}>
-                      {rgbToHex(rgb.r, rgb.g, rgb.b).toUpperCase()}
-                    </div>
-                    <div style={{fontSize: '1rem', color: 'var(--text-muted)', fontWeight: 500}}>
-                      rgb({rgb.r}, {rgb.g}, {rgb.b})
-                    </div>
-                  </div>
-                  <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: '0.5rem'}}>Klik pada kotak warna untuk memilih menggunakan color picker visual.</p>
-                </div>
-              </div>
-
-              {/* Quick presets */}
-              <div style={{marginTop: '1.5rem'}}>
-                <p style={{fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-muted)', marginBottom: '0.75rem'}}>PRESET CEPAT</p>
-                <div style={{display: 'flex', gap: '0.75rem', flexWrap: 'wrap'}}>
-                  {[
-                    { name: 'Indigo', r: 99, g: 102, b: 241 },
-                    { name: 'Emerald', r: 16, g: 185, b: 129 },
-                    { name: 'Rose', r: 244, g: 63, b: 94 },
-                    { name: 'Amber', r: 245, g: 158, b: 11 },
-                    { name: 'Violet', r: 139, g: 92, b: 246 },
-                    { name: 'Sky', r: 14, g: 165, b: 233 }
-                  ].map(preset => (
-                    <button
-                      key={preset.name}
-                      onClick={() => { isRgbUserChange.current = true; setRgb({ r: preset.r, g: preset.g, b: preset.b }); }}
-                      title={preset.name}
-                      style={{
-                        width: '36px', height: '36px', borderRadius: '50%',
-                        background: rgbToHex(preset.r, preset.g, preset.b),
-                        border: (rgb.r === preset.r && rgb.g === preset.g && rgb.b === preset.b)
-                          ? '3px solid var(--text-main)' : '2px solid transparent',
-                        cursor: 'pointer',
-                        transition: 'transform 0.15s',
-                        transform: (rgb.r === preset.r && rgb.g === preset.g && rgb.b === preset.b) ? 'scale(1.2)' : 'scale(1)'
-                      }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div style={{marginTop: '4rem', paddingTop: '2rem', borderTop: '1px solid var(--border)'}}>
-                <h3 style={{fontSize: '1.5rem', marginBottom: '1rem', color: 'var(--primary)'}}>Update Sistem</h3>
-                <div style={{background: 'var(--bg-app)', padding: '2rem', borderRadius: '24px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                  <div>
-                    <div style={{fontWeight: 700, fontSize: '1.1rem'}}>Cek Pembaruan Perangkat Lunak</div>
-                    <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>Versi saat ini: {pkg.version}</div>
-                  </div>
-                   <button 
-                    disabled={isCheckingUpdate}
-                    onClick={() => {
-                      if (window.require) {
-                        const { ipcRenderer } = window.require('electron');
-                        ipcRenderer.send('manual_check');
-                        setIsCheckingUpdate(true);
-                      }
-                    }}
-                    style={{
-                      padding: '1rem 2rem', 
-                      background: isCheckingUpdate ? 'var(--border)' : 'var(--primary-soft)', 
-                      color: isCheckingUpdate ? 'var(--text-muted)' : 'var(--primary)', 
-                      borderRadius: '12px', fontWeight: 700, border: 'none', 
-                      cursor: isCheckingUpdate ? 'not-allowed' : 'pointer',
-                      display: 'flex', alignItems: 'center', gap: '0.8rem'
-                    }}
-                  >
-                    {isCheckingUpdate ? (
-                      <>
-                        <div className="spinner-mini"></div>
-                        Mengecek...
-                      </>
-                    ) : 'Cek Update Sekarang'}
-                  </button>
-                  {updateMessage && (
-                    <div style={{
-                      fontSize: '0.85rem', 
-                      color: 'var(--primary)', 
-                      fontWeight: 700,
-                      animation: 'fadeIn 0.3s ease-out'
-                    }}>
-                      {updateMessage}
-                    </div>
-                  )}
-                </div>
-              </div>
-              
-              <button 
-                onClick={() => window.location.reload()}
-                style={{marginTop: '3rem', width: '100%', padding: '1.5rem', background: 'var(--primary)', color: 'white', borderRadius: '16px', fontWeight: 800, fontSize: '1.2rem', cursor: 'pointer', border: 'none', boxShadow: '0 10px 20px var(--primary-soft)'}}
-              >
-              REFRESH APLIKASI
-              </button>
-            </div>
-          </div>
+          <Settings
+            settings={settings}
+            updateSetting={updateSetting}
+            rgb={rgb}
+            setRgb={setRgb}
+            isRgbUserChange={isRgbUserChange}
+            rgbToHex={rgbToHex}
+            hexToRgb={hexToRgb}
+            appVersion={pkg.version}
+            isCheckingUpdate={isCheckingUpdate}
+            setIsCheckingUpdate={setIsCheckingUpdate}
+            updateMessage={updateMessage}
+            setUpdateMessage={setUpdateMessage}
+          />
         )}
       </main>
 
@@ -1499,6 +1659,29 @@ function App() {
             )}
           </div>
 
+          <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem', marginBottom: '1rem'}}>
+            <div>
+              <p style={{fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-muted)'}}>CASHIER</p>
+              <input 
+                type="text" 
+                placeholder="Nama Kasir" 
+                style={{width: '100%', padding: '0.7rem', fontSize: '0.9rem', borderRadius: '10px'}}
+                value={activeCashier}
+                onChange={e => setActiveCashier(e.target.value)}
+              />
+            </div>
+            <div>
+              <p style={{fontSize: '0.75rem', fontWeight: 700, marginBottom: '0.4rem', color: 'var(--text-muted)'}}>CAPTAIN</p>
+              <input 
+                type="text" 
+                placeholder="Waiter / Cap" 
+                style={{width: '100%', padding: '0.7rem', fontSize: '0.9rem', borderRadius: '10px'}}
+                value={activeCaptain}
+                onChange={e => setActiveCaptain(e.target.value)}
+              />
+            </div>
+          </div>
+
           <div style={{marginBottom: '1rem'}}>
             <p style={{fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.6rem', color: 'var(--text-muted)'}}>NAMA PELANGGAN / MEJA</p>
             <input 
@@ -1532,15 +1715,26 @@ function App() {
                   borderRadius: '8px',
                   fontSize: '0.75rem',
                   fontWeight: 800,
-                  boxShadow: '0 4px 10px var(--primary-soft)'
+                  boxShadow: '0 4px 10px var(--primary-soft)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '4px'
                 }}>
-                  ✓ {activeMember.name}
+                  <Check size={12} /> {activeMember.name}
                 </div>
               )}
             </div>
           </div>
 
-
+          <div style={{marginBottom: '1rem'}}>
+            <p style={{fontSize: '0.8rem', fontWeight: 600, marginBottom: '0.6rem', color: 'var(--text-muted)'}}>CATATAN PESANAN</p>
+            <textarea
+              placeholder="Tambahkan catatan..."
+              style={{width:'100%',padding:'0.8rem',fontSize:'0.9rem',borderRadius:'12px',border:'1px solid var(--border)',background:'var(--bg-app)',color:'var(--text-main)',resize:'none',height:'60px',fontFamily:'inherit'}}
+              value={transactionNotes}
+              onChange={e => setTransactionNotes(e.target.value)}
+            />
+          </div>
 
           <div style={{marginBottom: '2rem'}}>
             <p style={{fontSize: '0.8rem', fontWeight: 600, marginBottom: '1rem', color: 'var(--text-muted)'}}>METODE PEMBAYARAN</p>
@@ -1597,7 +1791,7 @@ function App() {
                  <span className="grand-total" style={{fontSize: '2.5rem'}}>Rp {total.toLocaleString()}</span>
               </div>
             </div>
-            <button className="btn-checkoutsidebar" onClick={handleCheckout} style={{
+            <button className="btn-checkout" onClick={handleCheckout} style={{
               height: '80px', 
               fontSize: '1.2rem',
               background: showQRISModal ? '#22c55e' : 'var(--primary)',
@@ -1616,6 +1810,22 @@ function App() {
                 `BAYAR SEKARANG (${paymentMethod})`
               )}
             </button>
+            {cart.length > 0 && (
+              <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', marginTop: '0.75rem'}}>
+                <button
+                  onClick={sendToKitchen}
+                  style={{padding:'0.8rem',background:'var(--primary-soft)',color:'var(--primary)',fontWeight:700,border:'1px solid var(--primary)',borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',gap:'0.5rem',cursor:'pointer'}}
+                >
+                  <Pause size={18} /> KE DAPUR
+                </button>
+                <button
+                  onClick={holdCurrentOrder}
+                  style={{padding:'0.8rem',background:'var(--warning-soft,rgba(245,158,11,0.1))',color:'var(--warning,#f59e0b)',fontWeight:700,border:'1px solid var(--warning,#f59e0b)',borderRadius:'16px',display:'flex',alignItems:'center',justifyContent:'center',gap:'0.5rem',cursor:'pointer'}}
+                >
+                  <Pause size={18} /> TAHAN (Ctrl+H)
+                </button>
+              </div>
+            )}
             {showQRISModal && (
               <button 
                 onClick={() => setShowQRISModal(false)}
@@ -1642,8 +1852,8 @@ function App() {
         <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.8)', backdropFilter: 'blur(10px)', zIndex: 2000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '2rem'}}>
           <div style={{background: 'white', color: 'black', width: '400px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)', textAlign: 'center'}}>
             <div style={{fontFamily: 'monospace'}}>
-              <h2 style={{fontSize: '1.5rem', fontWeight: 800}}>{settings.storeName}</h2>
-              <p style={{fontSize: '0.8rem', marginBottom: '2rem'}}>{settings.storeAddress}</p>
+              <h2 style={{fontSize: '1.5rem', fontWeight: 800}}>{settings.store_name}</h2>
+              <p style={{fontSize: '0.8rem', marginBottom: '2rem'}}>{settings.store_address}</p>
               
               <div style={{textAlign: 'left', borderTop: '1px dashed #ccc', borderBottom: '1px dashed #ccc', padding: '1.5rem 0', margin: '1.5rem 0'}}>
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8rem'}}>
@@ -1652,7 +1862,7 @@ function App() {
                 </div>
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '0.5rem', fontSize: '0.8rem'}}>
                   <span>Nama Customer:</span>
-                  <span>{lastTransaction.customerName}</span>
+                  <span>{lastTransaction.customer_name}</span>
                 </div>
                 <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem', fontSize: '0.8rem'}}>
                   <span>Waktu:</span>
@@ -1680,7 +1890,7 @@ function App() {
                 </div>
                 <div style={{display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem'}}>
                   <span>Metode:</span>
-                  <span>{lastTransaction.paymentMethod}</span>
+                  <span>{lastTransaction.payment_method}</span>
                 </div>
               </div>
 
@@ -1879,6 +2089,17 @@ function App() {
           </div>
         </div>
       )}
+      {/* Cash Calculator Modal */}
+      {showCashCalc && (
+        <CashCalculator
+          total={total}
+          onConfirm={(cashAmount, change) => {
+            setShowCashCalc(false);
+            handleCheckout();
+          }}
+          onClose={() => { setShowCashCalc(false); setIsProcessing(false); }}
+        />
+      )}
       {/* Toast Notification  */}
       {toast && (
         <div style={{
@@ -1894,9 +2115,62 @@ function App() {
             background: toast.type === 'success' ? '#22c55e' : '#ef4444',
             color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center'
           }}>
-            {toast.type === 'success' ? '✓' : '!'}
+            {toast.type === 'success' ? <Check size={20} /> : <AlertTriangle size={20} />}
           </div>
           <span style={{fontWeight: 700, color: 'var(--text-main)'}}>{toast.message}</span>
+        </div>
+      )}
+      {/* Custom Dialog (Alert/Confirm) */}
+      {dialog && (
+        <div style={{
+          position: 'fixed', inset: 0, zIndex: 10001,
+          background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          animation: 'fadeIn 0.3s ease-out'
+        }}>
+          <div style={{
+            background: 'var(--bg-card)', padding: '2.5rem', borderRadius: '32px',
+            border: '1px solid var(--border)', boxShadow: '0 30px 60px rgba(0,0,0,0.4)',
+            width: '400px', textAlign: 'center', animation: 'scaleUp 0.3s cubic-bezier(0.16, 1, 0.3, 1)'
+          }}>
+            <div style={{
+              width: '64px', height: '64px', borderRadius: '20px', 
+              background: dialog.type === 'confirm' ? 'var(--primary-soft)' : 'var(--danger-soft)',
+              color: dialog.type === 'confirm' ? 'var(--primary)' : 'var(--danger)',
+              margin: '0 auto 1.5rem', display: 'flex', alignItems: 'center', justifyContent: 'center'
+            }}>
+              {dialog.type === 'confirm' ? <Check size={32} /> : <AlertTriangle size={32} />}
+            </div>
+            <h3 style={{fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-main)'}}>{dialog.title}</h3>
+            <p style={{color: 'var(--text-muted)', marginBottom: '2rem', lineHeight: 1.5}}>{dialog.message}</p>
+            
+            <div style={{display: 'flex', gap: '1rem'}}>
+              {dialog.type === 'confirm' && (
+                <button 
+                  onClick={() => setDialog(null)}
+                  style={{flex: 1, padding: '1rem', borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', fontWeight: 700, cursor: 'pointer'}}
+                >
+                  BATAL
+                </button>
+              )}
+              <button 
+                onClick={() => {
+                  if (dialog.onConfirm) dialog.onConfirm();
+                  setDialog(null);
+                  // Auto-refocus search box to ensure inputs continue working
+                  setTimeout(() => document.querySelector('.search-box')?.focus(), 100);
+                }}
+                style={{
+                  flex: 1, padding: '1rem', borderRadius: '16px', border: 'none', 
+                  background: dialog.type === 'confirm' ? 'var(--primary)' : 'var(--danger)', 
+                  color: 'white', fontWeight: 800, cursor: 'pointer',
+                  boxShadow: dialog.type === 'confirm' ? '0 10px 20px -5px var(--primary-soft)' : '0 10px 20px -5px rgba(239,68,68,0.3)'
+                }}
+              >
+                {dialog.type === 'confirm' ? 'YA, LANJUTKAN' : 'OK'}
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -1917,6 +2191,11 @@ function Main() {
   // Jika URL mengandung kata customer-view, tampilkan layar pelanggan
   if (view.includes('customer-view')) {
     return <CustomerBoard />;
+  }
+
+  // Jika URL mengandung kata kitchen-view, tampilkan layar dapur
+  if (view.includes('kitchen-view')) {
+    return <KitchenDisplay />;
   }
   
   return <App />;
