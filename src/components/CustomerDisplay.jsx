@@ -42,7 +42,20 @@ const CustomerDisplay = () => {
     fetchSettings();
 
     const channel = new BroadcastChannel('customer_display');
-    channel.onmessage = (event) => setData(prev => ({ ...prev, ...event.data }));
+    channel.onmessage = (event) => {
+      const msg = event.data;
+      setData(prev => ({ 
+        ...prev, 
+        ...msg,
+        // Map camelCase properties from App.jsx broadcast to internal snake_case state
+        store_name: msg.storeName !== undefined ? msg.storeName : prev.store_name,
+        store_address: msg.storeAddress !== undefined ? msg.storeAddress : prev.store_address,
+        welcome_text: msg.welcomeText !== undefined ? msg.welcomeText : prev.welcome_text,
+        primary_color: msg.themeColor !== undefined ? msg.themeColor : prev.primary_color,
+        is_dark: msg.isDark !== undefined ? msg.isDark : prev.is_dark,
+        is_customer_display_on: msg.isCustomerDisplayOn !== undefined ? msg.isCustomerDisplayOn : prev.is_customer_display_on
+      }));
+    };
 
     // Real-time Settings Sync
     const settingsSub = supabase
@@ -385,9 +398,9 @@ const CustomerDisplay = () => {
                   <div style={{
                     width: '44px', height: '44px', background: 'var(--primary-soft)', borderRadius: '14px',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontSize: '1.2rem', color: 'var(--primary)', fontWeight: 800, flexShrink: 0
+                    fontSize: '1.2rem', color: 'var(--primary)', fontWeight: 800, flexShrink: 0, overflow: 'hidden'
                   }}>
-                    {p.name.charAt(0)}
+                    {p.image ? <img src={p.image} alt={p.name} style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : p.name.charAt(0)}
                   </div>
                   <div style={{flex: 1, minWidth: 0}}>
                     <div style={{fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-main)', lineHeight: 1.3}}>{p.name}</div>
@@ -475,9 +488,35 @@ const CustomerDisplay = () => {
         )}
       </div>
 
-      <footer style={{marginTop: '2rem', background: 'var(--bg-card)', padding: '1.5rem 2.5rem', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
-        <span style={{fontSize: '1.2rem', fontWeight: 600, color: 'var(--text-main)'}}>Total Bayar</span>
-        <span style={{fontSize: '2.5rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {(data.total || 0).toLocaleString()}</span>
+      <footer style={{marginTop: '2rem', background: 'var(--bg-card)', padding: '1.5rem 2.5rem', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
+        <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem', color: 'var(--text-muted)'}}>
+          <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem', fontSize: '1.1rem'}}>
+            <span>Subtotal:</span>
+            <span style={{fontWeight: 700, color: 'var(--text-main)'}}>Rp {(data.subtotal || 0).toLocaleString()}</span>
+          </div>
+          {data.taxAmount > 0 && (
+            <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem', fontSize: '1.1rem'}}>
+              <span>Pajak:</span>
+              <span style={{fontWeight: 700, color: 'var(--text-main)'}}>Rp {(data.taxAmount || 0).toLocaleString()}</span>
+            </div>
+          )}
+          {data.discount > 0 && (
+            <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem', fontSize: '1.1rem'}}>
+              <span>Diskon:</span>
+              <span style={{fontWeight: 700, color: '#ef4444'}}>- Rp {(data.discount || 0).toLocaleString()}</span>
+            </div>
+          )}
+          {data.pointsDiscount > 0 && (
+            <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem', fontSize: '1.1rem'}}>
+              <span>Diskon Poin:</span>
+              <span style={{fontWeight: 700, color: 'var(--success)'}}>- Rp {(data.pointsDiscount || 0).toLocaleString()}</span>
+            </div>
+          )}
+        </div>
+        <div style={{textAlign: 'right'}}>
+          <div style={{fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.2rem'}}>Total Bayar</div>
+          <div style={{fontSize: '2.8rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1}}>Rp {(data.total || 0).toLocaleString()}</div>
+        </div>
       </footer>
     </div>
   );

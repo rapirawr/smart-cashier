@@ -84,7 +84,8 @@ function App() {
   const [activeCashier, setActiveCashier] = useState(localStorage.getItem('activeCashier') || '');
   const [activeCaptain, setActiveCaptain] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(!!localStorage.getItem('activeCashier'));
-  const [dialog, setDialog] = useState(null); // { title, message, onConfirm, onCancel, type: 'alert' | 'confirm' }
+  const [dialog, setDialog] = useState(null); // { title, message, onConfirm, onCancel, type: 'alert' | 'confirm' | 'prompt', requiredText? }
+  const [promptValue, setPromptValue] = useState('');
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
@@ -206,6 +207,11 @@ function App() {
     setDialog({ title, message, onConfirm, type: 'confirm' });
   };
 
+  const customPrompt = (title, message, requiredText, onConfirm) => {
+    setPromptValue('');
+    setDialog({ title, message, requiredText, onConfirm, type: 'prompt' });
+  };
+
   const customAlert = (title, message) => {
     setDialog({ title, message, type: 'alert' });
   };
@@ -313,7 +319,8 @@ function App() {
       price: parseInt(editingProduct.price),
       stock: parseInt(editingProduct.stock),
       category: editingProduct.category,
-      variants: editingProduct.variants
+      variants: editingProduct.variants,
+      image: editingProduct.image
     }).eq('id', editingProduct.id);
     
     if (!error) {
@@ -519,40 +526,33 @@ function App() {
   }, [cart, customerName, activeMember, paymentMethod, transactionNotes, discount, activeCashier, activeCaptain, showToast, total, showCashCalc, showQRISModal, isProcessing]);
 
   // Sync with Customer Display
-    useEffect(() => {
-      // Calculators
-      const currentTaxRate_val = parseInt(settings.tax_rate ?? settings.taxRate) || 0;
-      const currentMemberDiscount_val = parseInt(settings.member_discount ?? settings.memberDiscount) || 0;
-      const subtotal_val = cart.reduce((acc, i) => acc + ((parseFloat(i.price) || 0) * (parseInt(i.qty) || 0)), 0);
-      const taxAmount_val = subtotal_val * (currentTaxRate_val / 100);
-      const discount_val = activeMember ? subtotal_val * (currentMemberDiscount_val / 100) : 0;
-      const total_val = subtotal_val + taxAmount_val - discount_val;
-  
-      const channel = new BroadcastChannel('customer_display');
-      channel.postMessage({ 
-        cart, 
-        subtotal: subtotal_val, 
-        taxAmount: taxAmount_val, 
-        discount: discount_val, 
-        total: total_val, 
-        storeName: settings.storeName,
-        welcomeText: settings.welcomeText || 'Selamat Datang / Welcome',          
-        customerName: customerName || '',
-        isDark,
-        themeColor: rgbToHex(rgb.r, rgb.g, rgb.b),
-        isCustomerDisplayOn: settings.isCustomerDisplayOn !== false,
-        customerViewMode: customerViewMode,
-        products: products,
-        showReceipt: showReceipt,
-        showQRIS: showQRISModal,
-        qrisData: settings.qrisImage,
-        isLoadingQR: false,
-        lastTransaction: lastTransaction,
-        storeAddress: settings.storeAddress,
-        cashierName: activeCashier
-      });
-      return () => channel.close();
-    }, [cart, activeMember, settings, customerName, isDark, customerViewMode, products, showReceipt, lastTransaction, showQRISModal, rgb, activeCashier]);
+  useEffect(() => {
+    const channel = new BroadcastChannel('customer_display');
+    channel.postMessage({ 
+      cart, 
+      subtotal: subtotal, 
+      taxAmount: taxAmount, 
+      discount: discount,
+      pointsDiscount: pointsDiscount,
+      total: total, 
+      storeName: settings.storeName,
+      welcomeText: settings.welcomeText || 'Selamat Datang / Welcome',          
+      customerName: customerName || '',
+      isDark,
+      themeColor: rgbToHex(rgb.r, rgb.g, rgb.b),
+      isCustomerDisplayOn: settings.isCustomerDisplayOn !== false,
+      customerViewMode: customerViewMode,
+      products: products,
+      showReceipt: showReceipt,
+      showQRIS: showQRISModal,
+      qrisData: settings.qrisImage,
+      isLoadingQR: false,
+      lastTransaction: lastTransaction,
+      storeAddress: settings.storeAddress,
+      cashierName: activeCashier
+    });
+    return () => channel.close();
+  }, [cart, activeMember, settings, customerName, isDark, customerViewMode, products, showReceipt, lastTransaction, showQRISModal, rgb, activeCashier, subtotal, taxAmount, discount, pointsDiscount, total]);
 
   useEffect(() => {
     const findMember = async () => {
@@ -598,6 +598,7 @@ function App() {
       // Quick Checkout / Confirm: Enter
       if (e.key === 'Enter') {
         if (dialog) {
+          if (dialog.type === 'prompt' && promptValue !== dialog.requiredText) return;
           if (dialog.onConfirm) dialog.onConfirm();
           setDialog(null);
           setTimeout(() => document.querySelector('.search-box')?.focus(), 100);
@@ -628,7 +629,7 @@ function App() {
 
     window.addEventListener('keydown', handleGlobalShortcuts);
     return () => window.removeEventListener('keydown', handleGlobalShortcuts);
-  }, [activeTab, cart.length, isProcessing, showReceipt, showCashCalc, total, holdCurrentOrder, handleCheckout]);
+  }, [activeTab, cart.length, isProcessing, showReceipt, showCashCalc, total, holdCurrentOrder, handleCheckout, dialog, promptValue]);
 
   useEffect(() => {
     const init = async () => {
@@ -969,8 +970,8 @@ function App() {
                         addToCart(p);
                       }
                     }}>
-                      <div className="p-avatar" style={{background: p.stock < 10 ? '#ef4444' : 'var(--primary-soft)', color: p.stock < 10 ? 'white' : 'var(--primary)'}}>
-                        {p.stock < 10 ? <IconAlert /> : p.name.charAt(0)}
+                      <div className="p-avatar" style={{background: p.stock < 10 ? '#ef4444' : 'var(--primary-soft)', color: p.stock < 10 ? 'white' : 'var(--primary)', overflow: 'hidden'}}>
+                        {p.stock < 10 ? <IconAlert /> : (p.image ? <img src={p.image} alt={p.name} style={{width: '100%', height: '100%', objectFit: 'cover'}} /> : p.name.charAt(0))}
                       </div>
                       <div className="p-info">
                         <span className="p-title">{p.name}</span>
@@ -1080,58 +1081,31 @@ function App() {
                 </label>
               </div>
             </div>
-            <form style={{display: 'flex', gap: '1.25rem', marginBottom: '4rem'}} onSubmit={async (e) => {
-              e.preventDefault();
-              const { error } = await supabase.from('products').insert({ ...formData, price: parseInt(formData.price), stock: parseInt(formData.stock) });
-              if (!error) {
-                setFormData({ name: '', price: '', stock: '', category: '', variants: '', image: '' }); 
-                fetchProducts();
-                showToast('Produk berhasil ditambahkan!');
-              }
-            }}>
-              <input 
-                style={{flex: 2, padding: '1.2rem', fontSize: '1.1rem', fontWeight: 600}} 
-                placeholder="Nama Produk" 
-                value={formData.name} 
-                onChange={e => setFormData({...formData, name: e.target.value})} 
-                required
-              />
-              <input 
-                style={{flex: 1, padding: '1.2rem', fontSize: '1.1rem'}} 
-                placeholder="Kategori" 
-                value={formData.category} 
-                onChange={e => setFormData({...formData, category: e.target.value})} 
-                required
-              />
-              <input 
-                style={{flex: 1, padding: '1.2rem', fontSize: '1.1rem'}} 
-                type="number" 
-                placeholder="Harga" 
-                value={formData.price} 
-                onChange={e => setFormData({...formData, price: e.target.value})} 
-                required
-              />
-              <input 
-                style={{width: '120px', padding: '1.2rem', fontSize: '1.1rem'}} 
-                type="number" 
-                placeholder="Stok" 
-                value={formData.stock} 
-                onChange={e => setFormData({...formData, stock: e.target.value})} 
-                required
-              />
-              <input 
-                style={{flex: 1, padding: '1.2rem', fontSize: '1.1rem'}} 
-                placeholder="Varian (Pisahkan dengan koma, misal: Hot, Ice)" 
-                value={formData.variants} 
-                onChange={e => setFormData({...formData, variants: e.target.value})} 
-              />
-              <button 
-                type="submit" 
-                style={{background: 'var(--primary)', color: 'white', padding: '0 2rem', fontWeight: 700}}
+            <div style={{marginBottom: '2rem', display: 'flex', gap: '1rem'}}>
+              <button
+                onClick={() => setShowAddProduct(true)}
+                style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'1rem 2rem',background:'var(--primary)',color:'white',borderRadius:'16px',fontWeight:800,cursor:'pointer',fontSize:'1.1rem',border:'none',boxShadow:'var(--shadow-main)'}}
               >
-                TAMBAH
+                + Tambah Produk Baru
               </button>
-            </form>
+              <button
+                onClick={() => {
+                  if (products.length === 0) return;
+                  customPrompt('Hapus Semua Menu', 'Apakah Anda yakin ingin menghapus semua produk? Tindakan ini tidak dapat dibatalkan.', 'Hapus Semua Menu', async () => {
+                    const { error } = await supabase.from('products').delete().neq('id', 0);
+                    if (!error) {
+                      fetchProducts();
+                      showToast('Semua menu berhasil dihapus!');
+                    } else {
+                      showToast('Gagal menghapus menu.', 'error');
+                    }
+                  });
+                }}
+                style={{display:'flex',alignItems:'center',gap:'0.5rem',padding:'1rem 2rem',background:'var(--danger-soft, #fef2f2)',color:'var(--danger, #ef4444)',borderRadius:'16px',fontWeight:800,cursor:'pointer',fontSize:'1.1rem',border:'1px solid var(--danger, #ef4444)',boxShadow:'var(--shadow-main)'}}
+              >
+                Hapus Semua
+              </button>
+            </div>
             
             <table style={{width: '100%', borderCollapse: 'separate', borderSpacing: '0 10px'}}>
               <thead>
@@ -1623,6 +1597,86 @@ function App() {
         </div>
       )}
 
+      {/* Add Product Modal */}
+      {showAddProduct && (
+        <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+          <div style={{background: 'var(--bg-card)', width: '500px', padding: '3rem', borderRadius: '32px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.5)'}}>
+            <h2 style={{fontSize: '2rem', marginBottom: '2rem'}}>Tambah Produk Baru</h2>
+            <form onSubmit={handleAddProduct} style={{display: 'flex', flexDirection: 'column', gap: '1.5rem'}}>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                <label style={{fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)'}}>NAMA PRODUK</label>
+                <input 
+                  style={{padding: '1.2rem'}}
+                  value={formData.name}
+                  onChange={e => setFormData({...formData, name: e.target.value})}
+                  required
+                />
+              </div>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                <label style={{fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)'}}>KATEGORI</label>
+                <input 
+                  style={{padding: '1.2rem'}}
+                  value={formData.category}
+                  onChange={e => setFormData({...formData, category: e.target.value})}
+                  required
+                />
+              </div>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                <label style={{fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)'}}>HARGA JUAL</label>
+                <input 
+                  type="number"
+                  style={{padding: '1.2rem'}}
+                  value={formData.price}
+                  onChange={e => setFormData({...formData, price: e.target.value})}
+                  required
+                />
+              </div>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                <label style={{fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)'}}>STOK TERSEDIA</label>
+                <input 
+                  type="number"
+                  style={{padding: '1.2rem'}}
+                  value={formData.stock}
+                  onChange={e => setFormData({...formData, stock: e.target.value})}
+                  required
+                />
+              </div>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                <label style={{fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)'}}>VARIAN (PISAHKAN DENGAN KOMA)</label>
+                <input 
+                  style={{padding: '1.2rem'}}
+                  value={formData.variants}
+                  onChange={e => setFormData({...formData, variants: e.target.value})}
+                />
+              </div>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                <label style={{fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)'}}>URL GAMBAR (OPSIONAL)</label>
+                <input 
+                  style={{padding: '1.2rem'}}
+                  value={formData.image || ''}
+                  onChange={e => setFormData({...formData, image: e.target.value})}
+                />
+              </div>
+              <div style={{display: 'flex', gap: '1rem', marginTop: '2rem'}}>
+                <button 
+                  type="button" 
+                  onClick={() => setShowAddProduct(false)}
+                  style={{flex: 1, padding: '1.2rem', background: 'var(--primary-soft)', color: 'var(--primary)', fontWeight: 700}}
+                >
+                  BATAL
+                </button>
+                <button 
+                  type="submit" 
+                  style={{flex: 2, padding: '1.2rem', background: 'var(--primary)', color: 'white', fontWeight: 700}}
+                >
+                  TAMBAH PRODUK
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       {/* Edit Modal  */}
       {editingProduct && (
         <div style={{position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(8px)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
@@ -1672,6 +1726,14 @@ function App() {
                   style={{padding: '1.2rem'}}
                   value={editingProduct.variants || ''}
                   onChange={e => setEditingProduct({...editingProduct, variants: e.target.value})}
+                />
+              </div>
+              <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem'}}>
+                <label style={{fontWeight: 700, fontSize: '0.9rem', color: 'var(--text-muted)'}}>URL GAMBAR (OPSIONAL)</label>
+                <input 
+                  style={{padding: '1.2rem'}}
+                  value={editingProduct.image || ''}
+                  onChange={e => setEditingProduct({...editingProduct, image: e.target.value})}
                 />
               </div>
               <div style={{display: 'flex', gap: '1rem', marginTop: '2rem'}}>
@@ -1850,8 +1912,20 @@ function App() {
             <h3 style={{fontSize: '1.5rem', fontWeight: 800, marginBottom: '0.75rem', color: 'var(--text-main)'}}>{dialog.title}</h3>
             <p style={{color: 'var(--text-muted)', marginBottom: '2rem', lineHeight: 1.5}}>{dialog.message}</p>
             
+            {dialog.type === 'prompt' && (
+              <div style={{marginBottom: '2rem'}}>
+                <input 
+                  autoFocus
+                  placeholder={`Ketik "${dialog.requiredText}"`}
+                  value={promptValue}
+                  onChange={e => setPromptValue(e.target.value)}
+                  style={{width: '100%', padding: '1rem', borderRadius: '12px', border: '1px solid var(--border)', textAlign: 'center', fontSize: '1rem', fontWeight: 600, background: 'var(--bg-app)', color: 'var(--text-main)'}}
+                />
+              </div>
+            )}
+
             <div style={{display: 'flex', gap: '1rem'}}>
-              {dialog.type === 'confirm' && (
+              {(dialog.type === 'confirm' || dialog.type === 'prompt') && (
                 <button 
                   onClick={() => setDialog(null)}
                   style={{flex: 1, padding: '1rem', borderRadius: '16px', border: '1px solid var(--border)', background: 'var(--bg-app)', color: 'var(--text-muted)', fontWeight: 700, cursor: 'pointer'}}
@@ -1860,7 +1934,9 @@ function App() {
                 </button>
               )}
               <button 
+                disabled={dialog.type === 'prompt' && promptValue !== dialog.requiredText}
                 onClick={() => {
+                  if (dialog.type === 'prompt' && promptValue !== dialog.requiredText) return;
                   if (dialog.onConfirm) dialog.onConfirm();
                   setDialog(null);
                   // Auto-refocus search box to ensure inputs continue working
@@ -1868,12 +1944,13 @@ function App() {
                 }}
                 style={{
                   flex: 1, padding: '1rem', borderRadius: '16px', border: 'none', 
-                  background: dialog.type === 'confirm' ? 'var(--primary)' : 'var(--danger)', 
-                  color: 'white', fontWeight: 800, cursor: 'pointer',
-                  boxShadow: dialog.type === 'confirm' ? '0 10px 20px -5px var(--primary-soft)' : '0 10px 20px -5px rgba(239,68,68,0.3)'
+                  background: (dialog.type === 'confirm' || dialog.type === 'prompt') ? 'var(--primary)' : 'var(--danger)', 
+                  color: 'white', fontWeight: 800, cursor: (dialog.type === 'prompt' && promptValue !== dialog.requiredText) ? 'not-allowed' : 'pointer',
+                  opacity: (dialog.type === 'prompt' && promptValue !== dialog.requiredText) ? 0.5 : 1,
+                  boxShadow: (dialog.type === 'confirm' || dialog.type === 'prompt') ? '0 10px 20px -5px var(--primary-soft)' : '0 10px 20px -5px rgba(239,68,68,0.3)'
                 }}
               >
-                {dialog.type === 'confirm' ? 'YA, LANJUTKAN' : 'OK'}
+                {(dialog.type === 'confirm' || dialog.type === 'prompt') ? 'YA, LANJUTKAN' : 'OK'}
               </button>
             </div>
           </div>
