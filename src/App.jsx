@@ -44,6 +44,7 @@ function App() {
     isCustomerDisplayOn: true,
     welcomeText: 'Selamat Datang / Welcome' ,
     qrisImage: '',
+    displayTemplate: 'classic',
     points_enabled: false,
     points_per_rupiah: 1000,   // Setiap 1000 rupiah = 1 poin
     points_value: 500          // 1 poin = Rp 500 saat redeem
@@ -557,6 +558,7 @@ function App() {
       isCustomerDisplayOn: settings.isCustomerDisplayOn !== false,
       customerViewMode: customerViewMode,
       products: products,
+      displayTemplate: settings.displayTemplate,
       showReceipt: showReceipt,
       showQRIS: showQRISModal,
       qrisData: settings.qrisImage,

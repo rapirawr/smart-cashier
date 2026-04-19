@@ -213,6 +213,41 @@ function Settings({ settings, updateSetting, rgb, setRgb, isRgbUserChange, rgbTo
                   </button>
                 </div>
               </div>
+
+              <div style={{marginTop: '3rem'}}>
+                <h4 style={{fontSize: '1.2rem', fontWeight: 800, marginBottom: '1.5rem'}}>Pilih Template Tampilan Pelanggan</h4>
+                <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '1.5rem'}}>
+                  {[
+                    { id: 'classic', name: 'Classic List', desc: 'Daftar item bersih dengan ringkasan di bawah.' },
+                    { id: 'split', name: 'Split Screen', desc: 'Item di kiri, Total besar di kanan (Fokus Harga).' },
+                    { id: 'modern', name: 'Modern Center', desc: 'Total di tengah atas, item di bawah (Minimalis).' },
+                    { id: 'visual', name: 'Visual Grid', desc: 'Menampilkan item dengan gambar produk (Grid).' },
+                    { id: 'banner', name: 'Full Banner', desc: 'Fokus pada total harga dengan ukuran raksasa.' }
+                  ].map(tpl => (
+                    <div 
+                      key={tpl.id}
+                      onClick={() => updateSetting('displayTemplate', tpl.id)}
+                      style={{
+                        padding: '1.5rem', borderRadius: '24px', 
+                        border: `2px solid ${settings.displayTemplate === tpl.id ? 'var(--primary)' : 'var(--border)'}`,
+                        background: settings.displayTemplate === tpl.id ? 'var(--primary-soft)' : 'var(--bg-card)',
+                        cursor: 'pointer', transition: 'all 0.3s',
+                        boxShadow: settings.displayTemplate === tpl.id ? '0 10px 20px -5px var(--primary-soft)' : 'none'
+                      }}
+                    >
+                      <div style={{
+                        width: '100%', height: '100px', background: 'var(--bg-app)', 
+                        borderRadius: '12px', marginBottom: '1rem', border: '1px solid var(--border)',
+                        display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.7rem', color: 'var(--text-muted)'
+                      }}>
+                         [ Preview {tpl.name} ]
+                      </div>
+                      <div style={{fontWeight: 800, fontSize: '1.1rem', marginBottom: '0.4rem', color: settings.displayTemplate === tpl.id ? 'var(--primary)' : 'var(--text-main)'}}>{tpl.name}</div>
+                      <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', margin: 0, lineHeight: 1.4}}>{tpl.desc}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           )}
 

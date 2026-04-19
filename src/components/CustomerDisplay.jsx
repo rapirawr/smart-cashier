@@ -19,7 +19,8 @@ const CustomerDisplay = () => {
     showReceipt: false,
     lastTransaction: null,
     store_address: '',
-    cashierName: ''
+    cashierName: '',
+    displayTemplate: 'classic'
   });
   const [selectedCategory, setSelectedCategory] = useState('Semua');
 
@@ -53,7 +54,8 @@ const CustomerDisplay = () => {
         welcome_text: msg.welcomeText !== undefined ? msg.welcomeText : prev.welcome_text,
         primary_color: msg.themeColor !== undefined ? msg.themeColor : prev.primary_color,
         is_dark: msg.isDark !== undefined ? msg.isDark : prev.is_dark,
-        is_customer_display_on: msg.isCustomerDisplayOn !== undefined ? msg.isCustomerDisplayOn : prev.is_customer_display_on
+        is_customer_display_on: msg.isCustomerDisplayOn !== undefined ? msg.isCustomerDisplayOn : prev.is_customer_display_on,
+        displayTemplate: msg.displayTemplate !== undefined ? msg.displayTemplate : prev.displayTemplate
       }));
     };
 
@@ -429,95 +431,248 @@ const CustomerDisplay = () => {
     );
   }
 
-  return (
-    <div className="pos-layout" style={{height: '100vh', padding: '2rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
-      <header style={{
-        marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        background: 'var(--bg-card)', padding: '1.5rem 2.5rem', borderRadius: '24px',
-        boxShadow: 'var(--shadow-main)', border: '1px solid var(--border)'
-      }}>
-        <div>
-          <h1 style={{fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: 0}}>{data.store_name}</h1>
-          <div style={{display: 'flex', alignItems: 'center', gap: '1rem', marginTop: '0.2rem'}}>
-            <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, margin: 0}}>{data.welcome_text}</p>
-            {data.cashierName && (
-              <span style={{
-                background: 'var(--primary-soft)', color: 'var(--primary)', 
-                padding: '0.2rem 0.6rem', borderRadius: '8px', 
-                fontSize: '0.7rem', fontWeight: 800, textTransform: 'uppercase'
-              }}>
-                Kasir: {data.cashierName}
-              </span>
-            )}
+  const renderCart = () => {
+    if (data.cart.length === 0) {
+      return (
+        <div style={{height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.15}}>
+          <div style={{transform: 'scale(3)', marginBottom: '2rem'}}>
+            <IconStore />
           </div>
+          <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginTop: 0}}>Menunggu Pesanan...</h2>
         </div>
-        <div style={{
-          textAlign: 'right', background: 'var(--primary)', padding: '0.8rem 1.5rem', 
-          borderRadius: '16px', color: 'white', 
-          boxShadow: `0 10px 20px -5px ${data.themeColor}66`,
-          border: '1px solid rgba(255,255,255,0.2)'
-        }}>
-          <p style={{fontSize: '0.7rem', fontWeight: 600, opacity: 0.8, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: '0.2rem', margin: 0}}>Pelanggan</p>
-          <h2 style={{fontSize: '1.2rem', fontWeight: 800, margin: 0}}>{data.customerName || 'UMUM'}</h2>
-        </div>
-      </header>
+      );
+    }
 
-      <div style={{flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '1rem'}}>
-        {data.cart.length === 0 ? (
-          <div style={{height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', opacity: 0.15}}>
-            <div style={{transform: 'scale(3)', marginBottom: '2rem'}}>
-              <IconStore />
+    return (
+      <div style={{display: 'flex', flexDirection: 'column', gap: '1rem', flex: 1, overflowY: 'auto'}} className="hide-scrollbar">
+        {data.cart.map((item, idx) => (
+          <div key={`${item.id}-${idx}`} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', padding: '1.2rem 1.5rem', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
+            <div>
+              <div style={{fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)'}}>
+                {item.name}
+                {item.selectedVariant && <span style={{fontSize: '0.9rem', color: 'var(--primary)', marginLeft: '0.5rem'}}>({item.selectedVariant})</span>}
+              </div>
+              <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>{item.qty} x Rp {item.price.toLocaleString()}</div>
             </div>
-            <h2 style={{fontSize: '1.5rem', fontWeight: 600, marginTop: 0}}>Menunggu Pesanan...</h2>
+            <div style={{fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)'}}>
+              Rp {(item.price * item.qty).toLocaleString()}
+            </div>
           </div>
-        ) : (
-          data.cart.map((item, idx) => (
-            <div key={`${item.id}-${idx}`} style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', padding: '1.2rem 1.5rem', borderRadius: '20px', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
-              <div>
-                <div style={{fontSize: '1.2rem', fontWeight: 700, color: 'var(--text-main)'}}>
-                  {item.name}
-                  {item.selectedVariant && <span style={{fontSize: '0.9rem', color: 'var(--primary)', marginLeft: '0.5rem'}}>({item.selectedVariant})</span>}
-                </div>
-                <div style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>{item.qty} x Rp {item.price.toLocaleString()}</div>
-              </div>
-              <div style={{fontSize: '1.2rem', fontWeight: 800, color: 'var(--primary)'}}>
-                Rp {(item.price * item.qty).toLocaleString()}
-              </div>
-            </div>
-          ))
-        )}
+        ))}
       </div>
+    );
+  };
 
-      <footer style={{marginTop: '2rem', background: 'var(--bg-card)', padding: '1.5rem 2.5rem', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
-        <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem', color: 'var(--text-muted)'}}>
-          <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem', fontSize: '1.1rem'}}>
-            <span>Subtotal:</span>
-            <span style={{fontWeight: 700, color: 'var(--text-main)'}}>Rp {(data.subtotal || 0).toLocaleString()}</span>
+  const renderSummary = (isSmall = false) => (
+    <div style={{display: 'flex', flexDirection: 'column', gap: '0.5rem', color: 'var(--text-muted)', fontSize: isSmall ? '1rem' : '1.1rem'}}>
+      <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem'}}>
+        <span>Subtotal:</span>
+        <span style={{fontWeight: 700, color: 'var(--text-main)'}}>Rp {(data.subtotal || 0).toLocaleString()}</span>
+      </div>
+      {data.taxAmount > 0 && (
+        <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem'}}>
+          <span>Pajak:</span>
+          <span style={{fontWeight: 700, color: 'var(--text-main)'}}>Rp {(data.taxAmount || 0).toLocaleString()}</span>
+        </div>
+      )}
+      {data.discount > 0 && (
+        <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem'}}>
+          <span>Diskon:</span>
+          <span style={{fontWeight: 700, color: '#ef4444'}}>- Rp {(data.discount || 0).toLocaleString()}</span>
+        </div>
+      )}
+      {data.pointsDiscount > 0 && (
+        <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem'}}>
+          <span>Diskon Poin:</span>
+          <span style={{fontWeight: 700, color: 'var(--success)'}}>- Rp {(data.pointsDiscount || 0).toLocaleString()}</span>
+        </div>
+      )}
+    </div>
+  );
+
+  // Template 1: Classic
+  if (data.displayTemplate === 'classic') {
+    return (
+      <div className="pos-layout" style={{height: '100vh', padding: '2rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)'}}>
+        <header style={{ marginBottom: '2rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', padding: '1.5rem 2.5rem', borderRadius: '24px', boxShadow: 'var(--shadow-main)', border: '1px solid var(--border)' }}>
+          <div>
+            <h1 style={{fontSize: '1.5rem', fontWeight: 800, color: 'var(--text-main)', margin: 0}}>{data.store_name}</h1>
+            <p style={{fontSize: '0.85rem', color: 'var(--text-muted)', fontWeight: 600, margin: 0}}>{data.welcome_text}</p>
           </div>
-          {data.taxAmount > 0 && (
-            <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem', fontSize: '1.1rem'}}>
-              <span>Pajak:</span>
-              <span style={{fontWeight: 700, color: 'var(--text-main)'}}>Rp {(data.taxAmount || 0).toLocaleString()}</span>
-            </div>
-          )}
-          {data.discount > 0 && (
-            <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem', fontSize: '1.1rem'}}>
-              <span>Diskon:</span>
-              <span style={{fontWeight: 700, color: '#ef4444'}}>- Rp {(data.discount || 0).toLocaleString()}</span>
-            </div>
-          )}
-          {data.pointsDiscount > 0 && (
-            <div style={{display: 'flex', justifyContent: 'space-between', gap: '2rem', fontSize: '1.1rem'}}>
-              <span>Diskon Poin:</span>
-              <span style={{fontWeight: 700, color: 'var(--success)'}}>- Rp {(data.pointsDiscount || 0).toLocaleString()}</span>
-            </div>
+          <div style={{ textAlign: 'right', background: 'var(--primary)', padding: '0.8rem 1.5rem', borderRadius: '16px', color: 'white' }}>
+            <p style={{fontSize: '0.7rem', fontWeight: 600, opacity: 0.8, textTransform: 'uppercase', marginBottom: '0.2rem', margin: 0}}>Pelanggan</p>
+            <h2 style={{fontSize: '1.2rem', fontWeight: 800, margin: 0}}>{data.customerName || 'UMUM'}</h2>
+          </div>
+        </header>
+
+        {renderCart()}
+
+        <footer style={{marginTop: '2rem', background: 'var(--bg-card)', padding: '1.5rem 2.5rem', borderRadius: '24px', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-end', border: '1px solid var(--border)', boxShadow: 'var(--shadow-main)'}}>
+          {renderSummary()}
+          <div style={{textAlign: 'right'}}>
+            <div style={{fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.2rem'}}>Total Bayar</div>
+            <div style={{fontSize: '2.8rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1}}>Rp {(data.total || 0).toLocaleString()}</div>
+          </div>
+        </footer>
+      </div>
+    );
+  }
+
+  // Template 2: Split Screen
+  if (data.displayTemplate === 'split') {
+    return (
+      <div style={{height: '100vh', display: 'flex', background: 'var(--bg-app)'}}>
+        <div style={{flex: 1, padding: '2rem', display: 'flex', flexDirection: 'column', borderRight: '1px solid var(--border)'}}>
+           <h1 style={{fontSize: '1.2rem', fontWeight: 800, marginBottom: '2rem'}}>{data.store_name}</h1>
+           {renderCart()}
+        </div>
+        <div style={{width: '450px', background: 'var(--bg-card)', padding: '3rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2rem'}}>
+          <div style={{textAlign: 'center', marginBottom: '2rem'}}>
+             <div style={{fontSize: '3rem', fontWeight: 900, color: 'var(--primary)'}}>Luma POS</div>
+             <p style={{fontSize: '1.1rem', color: 'var(--text-muted)'}}>{data.welcome_text}</p>
+          </div>
+          
+          <div style={{padding: '2rem', background: 'var(--bg-app)', borderRadius: '32px', border: '1px solid var(--border)'}}>
+             <p style={{fontSize: '0.9rem', color: 'var(--text-muted)', fontWeight: 700, textTransform: 'uppercase', marginBottom: '1rem'}}>Rincian Biaya</p>
+             {renderSummary(true)}
+             <div style={{height: '1px', background: 'var(--border)', margin: '1.5rem 0'}}></div>
+             <p style={{fontSize: '1rem', fontWeight: 700, color: 'var(--text-main)'}}>TOTAL AKHIR</p>
+             <div style={{fontSize: '3.5rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1}}>Rp {(data.total || 0).toLocaleString()}</div>
+          </div>
+
+          <div style={{marginTop: 'auto', textAlign: 'center', opacity: 0.5}}>
+             <p style={{fontWeight: 700}}>Pelanggan: {data.customerName || 'UMUM'}</p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Template 3: Modern Center
+  if (data.displayTemplate === 'modern') {
+    return (
+      <div style={{height: '100vh', padding: '3rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', gap: '2rem'}}>
+        <div style={{display: 'grid', gridTemplateColumns: '1fr 2fr 1fr', alignItems: 'center'}}>
+           <div>
+              <h1 style={{fontSize: '1.2rem', fontWeight: 800}}>{data.store_name}</h1>
+              <p style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>{data.welcome_text}</p>
+           </div>
+           <div style={{textAlign: 'center', background: 'var(--primary)', padding: '1.5rem', borderRadius: '32px', color: 'white', boxShadow: '0 20px 40px -10px var(--primary-soft)'}}>
+              <p style={{fontSize: '0.8rem', fontWeight: 700, opacity: 0.8, textTransform: 'uppercase', marginBottom: '0.3rem'}}>Total Pembayaran</p>
+              <div style={{fontSize: '4rem', fontWeight: 900, lineHeight: 1}}>Rp {(data.total || 0).toLocaleString()}</div>
+           </div>
+           <div style={{textAlign: 'right'}}>
+              <p style={{fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 700}}>CUSTOMER</p>
+              <div style={{fontSize: '1.1rem', fontWeight: 800}}>{data.customerName || 'UMUM'}</div>
+           </div>
+        </div>
+
+        <div style={{flex: 1, display: 'flex', gap: '2rem', overflow: 'hidden'}}>
+           <div style={{flex: 2, display: 'flex', flexDirection: 'column'}}>
+              {renderCart()}
+           </div>
+           <div style={{flex: 1, background: 'var(--bg-card)', padding: '2rem', borderRadius: '32px', border: '1px solid var(--border)', display: 'flex', flexDirection: 'column', justifyContent: 'flex-end'}}>
+              {renderSummary()}
+              <div style={{height: '1px', background: 'var(--border)', margin: '1.5rem 0'}}></div>
+              <div style={{fontSize: '1.5rem', fontWeight: 900, color: 'var(--primary)', textAlign: 'right'}}>
+                 TOTAL Rp {(data.total || 0).toLocaleString()}
+              </div>
+           </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Template 4: Visual Grid
+  if (data.displayTemplate === 'visual') {
+    return (
+      <div style={{height: '100vh', padding: '2rem', display: 'flex', flexDirection: 'column', background: 'var(--bg-app)', gap: '2rem'}}>
+        <header style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+           <div>
+              <h1 style={{fontSize: '1.5rem', fontWeight: 800}}>{data.store_name}</h1>
+              <p style={{fontSize: '0.9rem', color: 'var(--text-muted)'}}>{data.welcome_text}</p>
+           </div>
+           <div style={{textAlign: 'right'}}>
+              <div style={{fontSize: '1rem', fontWeight: 700, opacity: 0.6}}>TOTAL</div>
+              <div style={{fontSize: '3rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {(data.total || 0).toLocaleString()}</div>
+           </div>
+        </header>
+
+        <div style={{flex: 1, display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))', gap: '1.5rem', overflowY: 'auto'}} className="hide-scrollbar">
+          {data.cart.length === 0 ? (
+             <div style={{gridColumn: '1/-1', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.1}}>
+                <IconBox />
+             </div>
+          ) : (
+            data.cart.map((item, idx) => (
+              <div key={idx} style={{background: 'var(--bg-card)', borderRadius: '24px', border: '1px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column'}}>
+                 <div style={{width: '100%', height: '180px', background: 'var(--bg-app)', display: 'flex', alignItems: 'center', justifyContent: 'center'}}>
+                    {item.image ? (
+                      <img src={item.image} alt={item.name} style={{width: '100%', height: '100%', objectFit: 'cover'}} />
+                    ) : (
+                      <div style={{fontSize: '4rem', opacity: 0.2}}>{item.name.charAt(0)}</div>
+                    )}
+                 </div>
+                 <div style={{padding: '1.5rem', flex: 1, display: 'flex', flexDirection: 'column'}}>
+                    <div style={{fontSize: '1.2rem', fontWeight: 800, marginBottom: '0.2rem'}}>{item.name}</div>
+                    <div style={{fontSize: '0.9rem', color: 'var(--text-muted)', marginBottom: '1rem'}}>{item.qty} x Rp {item.price.toLocaleString()}</div>
+                    <div style={{marginTop: 'auto', fontSize: '1.3rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {(item.qty * item.price).toLocaleString()}</div>
+                 </div>
+              </div>
+            ))
           )}
         </div>
-        <div style={{textAlign: 'right'}}>
-          <div style={{fontSize: '1.1rem', fontWeight: 600, color: 'var(--text-main)', marginBottom: '0.2rem'}}>Total Bayar</div>
-          <div style={{fontSize: '2.8rem', fontWeight: 900, color: 'var(--primary)', lineHeight: 1}}>Rp {(data.total || 0).toLocaleString()}</div>
-        </div>
-      </footer>
+
+        <footer style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-card)', padding: '1.5rem 2.5rem', borderRadius: '32px', border: '1px solid var(--border)'}}>
+           <div style={{fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-muted)'}}>Pelanggan: <span style={{color: 'var(--text-main)'}}>{data.customerName || 'UMUM'}</span></div>
+           {renderSummary(true)}
+        </footer>
+      </div>
+    );
+  }
+
+  // Template 5: Full Banner
+  if (data.displayTemplate === 'banner') {
+    return (
+      <div style={{height: '100vh', display: 'flex', flexDirection: 'column', background: 'var(--bg-card)'}}>
+         <div style={{flex: 1, background: 'var(--primary)', color: 'white', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', textAlign: 'center', padding: '2rem'}}>
+            <h1 style={{fontSize: '2rem', fontWeight: 800, opacity: 0.7, marginBottom: '1rem', textTransform: 'uppercase', letterSpacing: '0.2em'}}>{data.store_name}</h1>
+            <div style={{fontSize: '10rem', fontWeight: 900, letterSpacing: '-0.04em', lineHeight: 1}}>
+               Rp {(data.total || 0).toLocaleString()}
+            </div>
+            <p style={{fontSize: '1.5rem', fontWeight: 600, opacity: 0.8, marginTop: '2rem'}}>{data.welcome_text}</p>
+         </div>
+         <div style={{height: '300px', padding: '2rem', display: 'flex', gap: '2rem', overflowX: 'auto', background: 'var(--bg-app)'}} className="hide-scrollbar">
+            {data.cart.length === 0 ? (
+               <div style={{width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0.2, fontWeight: 700}}>BELUM ADA PESANAN</div>
+            ) : (
+              data.cart.map((item, idx) => (
+                <div key={idx} style={{minWidth: '300px', background: 'var(--bg-card)', padding: '1.5rem', borderRadius: '24px', border: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                   <div>
+                      <div style={{fontWeight: 800, fontSize: '1.1rem'}}>{item.name}</div>
+                      <div style={{fontSize: '0.8rem', color: 'var(--text-muted)'}}>{item.qty} x {item.price.toLocaleString()}</div>
+                   </div>
+                   <div style={{fontSize: '1.2rem', fontWeight: 900, color: 'var(--primary)'}}>Rp {(item.qty * item.price).toLocaleString()}</div>
+                </div>
+              ))
+            )}
+         </div>
+         <div style={{background: 'var(--bg-card)', padding: '1rem 3rem', display: 'flex', justifyContent: 'space-between', borderTop: '1px solid var(--border)'}}>
+            <div style={{fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)'}}>CUSTOMER: {data.customerName || 'UMUM'}</div>
+            <div style={{fontSize: '0.9rem', fontWeight: 700, color: 'var(--text-muted)'}}>METODE: SCAN QRIS / CASH</div>
+         </div>
+      </div>
+    );
+  }
+
+  // Fallback / Default
+  return (
+    <div style={{height: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--bg-app)'}}>
+       <div style={{textAlign: 'center', opacity: 0.5}}>
+          <h1 style={{fontSize: '3rem', fontWeight: 900}}>{data.store_name}</h1>
+          <p>{data.welcome_text}</p>
+          <div style={{marginTop: '2rem', fontSize: '1.5rem', fontWeight: 700, color: 'var(--primary)'}}>PILIH TEMPLATE DI PENGATURAN</div>
+       </div>
     </div>
   );
 };
