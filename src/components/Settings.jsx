@@ -45,7 +45,7 @@ function Settings({ settings, updateSetting, rgb, setRgb, isRgbUserChange, rgbTo
             </button>
           ))}
           <div style={{marginTop: 'auto', padding: '1rem', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border)'}}>
-            <div style={{fontWeight: 800, fontSize: '1rem'}}>Luma POS</div>
+            <div style={{fontWeight: 800, fontSize: '1rem'}}>Kaze POS</div>
             <div style={{fontSize: '0.8rem', color: 'var(--primary)', fontWeight: 700}}>v{pkg.version}</div>
           </div>
         </div>
@@ -354,7 +354,7 @@ function Settings({ settings, updateSetting, rgb, setRgb, isRgbUserChange, rgbTo
                 <h4 style={{fontWeight: 700, marginBottom: '1rem'}}>Informasi Aplikasi</h4>
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
                   {[
-                    ['Nama Aplikasi', 'Luma POS'],
+                    ['Nama Aplikasi', 'Kaze POS'],
                     ['Versi', pkg.version],
                     ['Platform', 'Electron + React'],
                     ['Database', 'Supabase'],

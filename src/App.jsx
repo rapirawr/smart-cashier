@@ -36,7 +36,7 @@ const IconCart = ({ size = 24 }) => <svg width={size} height={size} viewBox="0 0
 
 function App() {
   const [settings, setSettings] = useState({
-    storeName: 'Luma POS',
+    storeName: 'Kaze POS',
     storeAddress: 'Store Address',
     taxRate: 11,
     memberDiscount: 5,
@@ -656,7 +656,7 @@ function App() {
             <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
           </div>
         </div>
-        <h1 style={{color: 'white', fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.02em', marginBottom: '0.5rem'}}>LUMA POS</h1>
+        <h1 style={{color: 'white', fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.02em', marginBottom: '0.5rem'}}>KAZE POS</h1>
         <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: '0.1em', fontSize: '0.8rem'}}>
           <div className="splash-loader"></div> INITIALIZING SYSTEM
         </div>
@@ -690,7 +690,7 @@ function App() {
           }}>
             <IconStore />
           </div>
-          <h1 style={{fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem'}}>Luma POS</h1>
+          <h1 style={{fontSize: '1.8rem', fontWeight: 800, marginBottom: '0.5rem'}}>Kaze POS</h1>
           <p style={{color: 'var(--text-muted)', marginBottom: '2rem'}}>Silakan masukkan nama kasir yang bertugas</p>
           
           <input 
@@ -830,7 +830,7 @@ function App() {
 
           <div style={{marginTop: '1rem', padding: '0.8rem', background: 'var(--bg-card)', borderRadius: '16px', border: '1px solid var(--border)', width: 'calc(100% - 1rem)', textAlign: 'center'}}>
             <div style={{fontWeight: 800, fontSize: '0.7rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', color: 'var(--text-main)'}}>{activeCashier}</div>
-            <div style={{fontSize: '0.6rem', color: 'var(--primary)', fontWeight: 700}}>Luma POS</div>
+            <div style={{fontSize: '0.6rem', color: 'var(--primary)', fontWeight: 700}}>Kaze POS</div>
           </div>
         </div>
       </aside>

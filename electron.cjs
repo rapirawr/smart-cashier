@@ -44,7 +44,7 @@ function createWindow() {
       sandbox: false
     },
     backgroundColor: '#020617',
-    title: 'Smart Cashier Desktop',
+    title: 'Kaze POS Desktop',
     show: false
   });
 

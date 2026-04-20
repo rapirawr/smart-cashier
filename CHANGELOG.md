@@ -1,6 +1,12 @@
-# Changelog - Luma POS
+# Changelog - Kaze POS
 
 All notable changes to this project will be documented in this file.
+
+## [2.1.0] - 2026-04-20
+### 🚀 Rebranding
+- **Branding**: Rebranded application from "Luma POS" to **Kaze POS**.
+- **Metadata**: Updated `package.json`, `appId`, and build configurations to reflect the new identity.
+
 
 ## [2.0.0] - 2026-04-18
 ### 🚀 Major Rebranding & Core Refactor
@@ -40,4 +46,4 @@ All notable changes to this project will be documented in this file.
 - **Auto-Update**: Stabilized Electron update mechanism and metadata alignment.
 
 ---
-*Luma POS - Empowering your business with modern, efficient sales technology.*
+*Kaze POS - Empowering your business with modern, efficient sales technology.*

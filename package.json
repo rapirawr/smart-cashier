@@ -1,8 +1,8 @@
 {
-  "name": "luma-pos",
+  "name": "kaze-pos",
   "private": true,
-  "version": "1.0.0",
-  "description": "Luma POS - Enterprise Grade POS System",
+  "version": "2.1.0",
+  "description": "Kaze POS - Enterprise Grade POS System",
   "author": "Rafi Abdillah F",
   "type": "module",
   "main": "electron.cjs",
@@ -48,8 +48,8 @@
     "wait-on": "^9.0.5"
   },
   "build": {
-    "appId": "com.luma.pos",
-    "productName": "Luma POS",
+    "appId": "com.kaze.pos",
+    "productName": "Kaze POS",
     "copyright": "Copyright © 2026",
     "directories": {
       "output": "dist_electron"
@@ -62,14 +62,14 @@
     "win": {
       "target": "nsis",
       "icon": "public/logo.png",
-      "artifactName": "Luma-POS-Setup-${version}.${ext}"
+      "artifactName": "Kaze-POS-Setup-${version}.${ext}"
     },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
-      "shortcutName": "Luma POS"
+      "shortcutName": "Kaze POS"
     },
     "publish": [
       {

@@ -1,4 +1,4 @@
-# 🚀 Smart Cashier (POS)
+# 🚀 Kaze POS
 
 A modern, high-performance Point of Sale (POS) application built with React and Electron. Designed for speed, reliability, and a premium user experience.
 

@@ -9,7 +9,7 @@ const CustomerDisplay = () => {
   const [data, setData] = useState({ 
     cart: [], 
     total: 0, 
-    store_name: 'Luma POS', 
+    store_name: 'Kaze POS', 
     welcome_text: 'Selamat Datang' , 
     is_dark: true, 
     primary_color: '#6366f1', 
@@ -528,7 +528,7 @@ const CustomerDisplay = () => {
         </div>
         <div style={{width: '450px', background: 'var(--bg-card)', padding: '3rem', display: 'flex', flexDirection: 'column', justifyContent: 'center', gap: '2rem'}}>
           <div style={{textAlign: 'center', marginBottom: '2rem'}}>
-             <div style={{fontSize: '3rem', fontWeight: 900, color: 'var(--primary)'}}>Luma POS</div>
+             <div style={{fontSize: '3rem', fontWeight: 900, color: 'var(--primary)'}}>Kaze POS</div>
              <p style={{fontSize: '1.1rem', color: 'var(--text-muted)'}}>{data.welcome_text}</p>
           </div>
           
