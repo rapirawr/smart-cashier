@@ -59,6 +59,7 @@ function App() {
   const [memberSearch, setMemberSearch] = useState('');
   const [activeTab, setActiveTab] = useState(localStorage.getItem('activeTab') || 'pos');
   const [selectedCategory, setSelectedCategory] = useState('Semua');
+  const [isInitializing, setIsInitializing] = useState(true);
   const [paymentMethod, setPaymentMethod] = useState('Cash');
   const [lastTransaction, setLastTransaction] = useState(null);
   const [showReceipt, setShowReceipt] = useState(false);
@@ -96,6 +97,41 @@ function App() {
   const [showEndShiftModal, setShowEndShiftModal] = useState(false);
   const [shiftActualCash, setShiftActualCash] = useState('');
   const [shiftNotes, setShiftNotes] = useState('');
+  const [editingProduct, setEditingProduct] = useState(null);
+  const [productToSelectVariant, setProductToSelectVariant] = useState(null);
+  const [checkoutKey, setCheckoutKey] = useState(0);
+  const [memberFormData, setMemberFormData] = useState({ name: '', phone: '' });
+  const [customerName, setCustomerName] = useState('');
+  const [memberPhone, setMemberPhone] = useState('');
+  const [activeMember, setActiveMember] = useState(null);
+  const [isDark, setIsDark] = useState(localStorage.getItem('theme') === 'dark');
+  const isRgbUserChange = useRef(false);
+
+  const hexToRgb = (hex) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    return result ? { r: parseInt(result[1], 16), g: parseInt(result[2], 16), b: parseInt(result[3], 16) } : { r: 99, g: 102, b: 241 };
+  };
+  const rgbToHex = (r, g, b) => '#' + [r, g, b].map(v => Math.min(255, Math.max(0, parseInt(v) || 0)).toString(16).padStart(2, '0')).join('');
+  const [rgb, setRgb] = useState(() => hexToRgb(localStorage.getItem('themeColor') || '#6366f1'));
+
+  // --- POS Calculations ---
+  const categories = ['Semua', ...new Set(products.flatMap(p => (p.category || 'Lainnya').split(',').map(c => c.trim())))];
+  const currentTaxRate = parseInt(settings.taxRate || settings.tax_rate) || 0;
+  const currentMemberDiscount = parseInt(settings.memberDiscount || settings.member_discount) || 0;
+  const subtotal = cart.reduce((acc, i) => acc + (i.price * i.qty), 0);
+  const taxAmount = subtotal * (currentTaxRate / 100);
+  const discount = activeMember ? subtotal * (currentMemberDiscount / 100) : 0;
+  const isPointsEnabled = settings.points_enabled === true;
+  const pointsPerRupiah = parseInt(settings.points_per_rupiah) || 1000;
+  const pointsValue = parseInt(settings.points_value) || 500;
+  const maxRedeemable = activeMember ? (parseInt(activeMember.points) || 0) : 0;
+  const pointsDiscount = (usePoints && isPointsEnabled && activeMember) ? (pointsToRedeem * pointsValue) : 0;
+  const earnedPoints = isPointsEnabled ? Math.floor(subtotal / pointsPerRupiah) : 0;
+  const total = subtotal + taxAmount - discount - pointsDiscount;
+
+
+
+
 
   const showToast = useCallback((message, type = 'success') => {
     setToast({ message, type });
@@ -151,48 +187,53 @@ function App() {
     }
   };
 
-  const fetchSettings = useCallback(async () => {
+  const fetchSettings = async () => {
     try {
-      const { data: s, error } = await supabase.from('settings').select('*').single();
-      if (error) throw error;
-      
-      if (s) {
-        setSettings(s);
-        if (s.is_dark !== undefined) setIsDark(s.is_dark);
-        // Apply theme color
-        if (s.primary_color) {
-          document.documentElement.style.setProperty('--primary', s.primary_color);
-          document.documentElement.style.setProperty('--primary-soft', s.primary_color + '26');
+      const { data, error } = await supabase.from('settings').select('*').single();
+      if (!error && data) {
+        setSettings(prev => ({
+          ...prev,
+          storeName: data.store_name,
+          storeAddress: data.store_address,
+          taxRate: data.tax_rate,
+          memberDiscount: data.member_discount,
+          themeColor: data.primary_color || '#6366f1',
+          isCustomerDisplayOn: data.is_customer_display_on,
+          welcomeText: data.welcome_text,
+          qrisImage: data.qris_image,
+          points_enabled: data.points_enabled || false,
+          points_per_rupiah: data.points_per_rupiah || 1000,
+          points_value: data.points_value || 500,
+          displayTemplate: data.display_template || 'classic'
+        }));
+        
+        if (data.primary_color) {
+          document.documentElement.style.setProperty('--primary', data.primary_color);
+          document.documentElement.style.setProperty('--primary-soft', data.primary_color + '26');
         }
       }
-    } catch (err) {
-      console.error('Failed to fetch settings:', err);
+    } catch (e) {
+      // Fail silently
+    } finally {
+      setTimeout(() => setIsInitializing(false), 2000);
     }
-  }, []);
+  };
 
   const updateSetting = async (key, value) => {
     const newSettings = { ...settings, [key]: value };
     setSettings(newSettings);
-    
-    // Update local theme immediately if color or theme changed
     if (key === 'primary_color') {
       document.documentElement.style.setProperty('--primary', value);
       document.documentElement.style.setProperty('--primary-soft', value + '26');
     }
-    
-    // Save to Supabase
     let settingsId = settings?.id;
     if (!settingsId) {
        const { data } = await supabase.from('settings').select('id').single();
        settingsId = data?.id;
     }
-
     if (settingsId) {
-      const { error } = await supabase.from('settings').update({ [key]: value }).eq('id', settingsId);
-      if (error) console.error("Failed to update setting:", error);
+      await supabase.from('settings').update({ [key]: value }).eq('id', settingsId);
     }
-    
-    // Notify other views (Kitchen, Customer)
     const bc = new BroadcastChannel('customer_display');
     bc.postMessage({ [key]: value });
     bc.close();
@@ -225,38 +266,47 @@ function App() {
   const customAlert = (title, message) => {
     setDialog({ title, message, type: 'alert' });
   };
-  
-  useEffect(() => {
-    localStorage.setItem('activeTab', activeTab);
-  }, [activeTab]);
 
-  useEffect(() => {
-    if (activeShift) localStorage.setItem('activeShift', JSON.stringify(activeShift));
-    else localStorage.removeItem('activeShift');
-  }, [activeShift]);
-  
-  // Checkout Session State
-  const [customerName, setCustomerName] = useState('');
-  const [memberPhone, setMemberPhone] = useState('');
-  const [activeMember, setActiveMember] = useState(null);
-  const [checkoutKey, setCheckoutKey] = useState(0);
-
-  const [isDark, setIsDark] = useState(localStorage.getItem('theme') === 'dark');
-
-  // RGB state untuk theme color picker
-  const hexToRgb = (hex) => {
-    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
-    return result ? {
-      r: parseInt(result[1], 16),
-      g: parseInt(result[2], 16),
-      b: parseInt(result[3], 16)
-    } : { r: 99, g: 102, b: 241 };
+  const handleLogin = (name) => {
+    setActiveCashier(name);
+    setIsLoggedIn(true);
+    localStorage.setItem('activeCashier', name);
   };
-  const rgbToHex = (r, g, b) => '#' + [r, g, b].map(v => Math.min(255, Math.max(0, parseInt(v) || 0)).toString(16).padStart(2, '0')).join('');
-  const [rgb, setRgb] = useState(() => hexToRgb(localStorage.getItem('themeColor') || '#6366f1'));
-  const isRgbUserChange = React.useRef(false);
 
-  // 1. Terapkan warna ke CSS Variable secara real-time
+  const handleLogout = () => {
+    if (activeShift) {
+      setShowEndShiftModal(true);
+    } else {
+      customConfirm('Ganti Kasir', 'Apakah Anda yakin ingin mengganti kasir (Log Out)?', () => {
+        setIsLoggedIn(false);
+        setActiveCashier('');
+        localStorage.removeItem('activeCashier');
+      });
+    }
+  };
+
+  const forceLogout = () => {
+    setIsLoggedIn(false);
+    setActiveCashier('');
+    localStorage.removeItem('activeCashier');
+  };
+
+  const getShiftSummary = () => {
+    if (!activeShift) return null;
+    const shiftTx = transactions.filter(t => 
+      t.cashier_name === activeShift.cashierName && 
+      new Date(t.timestamp) >= new Date(activeShift.startTime)
+    );
+    const totalCash = shiftTx.filter(t => t.payment_method === 'Cash').reduce((sum, t) => sum + t.total, 0);
+    const totalQRIS = shiftTx.filter(t => t.payment_method === 'QRIS').reduce((sum, t) => sum + t.total, 0);
+    const totalDebit = shiftTx.filter(t => t.payment_method === 'Debit').reduce((sum, t) => sum + t.total, 0);
+    const expectedCash = activeShift.startingCash + totalCash;
+    
+    return { totalCash, totalQRIS, totalDebit, expectedCash, transactionCount: shiftTx.length };
+  };
+
+
+
   useEffect(() => {
     const root = document.documentElement;
     const color = rgbToHex(rgb.r, rgb.g, rgb.b);
@@ -264,48 +314,56 @@ function App() {
     root.style.setProperty('--primary-soft', `${color}15`);
   }, [rgb]);
 
-  // 2. Simpan ke database jika perubahan berasal dari user
   useEffect(() => {
-    if (!isRgbUserChange.current) return;
-    isRgbUserChange.current = false;
-    const hex = rgbToHex(rgb.r, rgb.g, rgb.b);
-    updateSetting('primary_color', hex);
-  }, [rgb, updateSetting]);
-
-  // 3. Sinkronisasi dari Settings (saat load pertama)
-  useEffect(() => {
-    if (settings.primary_color) {
-      const newRgb = hexToRgb(settings.primary_color);
-      setRgb(prev => {
-        if (prev.r === newRgb.r && prev.g === newRgb.g && prev.b === newRgb.b) return prev;
-        return newRgb;
-      });
-    }
-  }, [settings.primary_color]);
-
-  // 4. Sinkronisasi Dark Mode
-  useEffect(() => {
-    if (isDark) {
-      document.body.classList.add('dark');
-    } else {
-      document.body.classList.remove('dark');
-    }
-    // Only update if it actually changed in settings
-    if (settings.is_dark !== isDark) {
-      updateSetting('is_dark', isDark);
-    }
+    if (isDark) document.body.classList.add('dark');
+    else document.body.classList.remove('dark');
   }, [isDark]);
 
   useEffect(() => {
-    localStorage.setItem('activeCashier', activeCashier);
-  }, [activeCashier]);
+    const init = async () => {
+      await fetchSettings();
+      await fetchProducts();
+      await fetchTransactions();
+      await fetchMembers();
+    };
+    init();
+  }, [fetchProducts, fetchTransactions, fetchMembers]);
 
-  const [memberFormData, setMemberFormData] = useState({ name: '', phone: '' });
-  const [editingProduct, setEditingProduct] = useState(null);
-  const [productToSelectVariant, setProductToSelectVariant] = useState(null);
-
-  const categories = ['Semua', ...new Set(products.flatMap(p => (p.category || 'Lainnya').split(',').map(c => c.trim())))];
-
+  const handleEndShift = async () => {
+    const summary = getShiftSummary();
+    if (!summary) return;
+    const actual = parseInt(shiftActualCash) || 0;
+    const shiftRecord = {
+      ...activeShift,
+      endTime: new Date().toISOString(),
+      expectedCash: summary.expectedCash,
+      actualCash: actual,
+      totalCash: summary.totalCash,
+      totalQRIS: summary.totalQRIS,
+      totalDebit: summary.totalDebit,
+      difference: actual - summary.expectedCash,
+      notes: shiftNotes
+    };
+    try { await db.shifts.add(shiftRecord); } catch (e) {}
+    try {
+      await supabase.from('shifts').insert({
+        cashier_name: shiftRecord.cashierName,
+        start_time: shiftRecord.startTime,
+        end_time: shiftRecord.endTime,
+        starting_cash: shiftRecord.startingCash,
+        expected_cash: shiftRecord.expectedCash,
+        actual_cash: shiftRecord.actualCash,
+        difference: shiftRecord.difference,
+        notes: shiftRecord.notes
+      });
+    } catch (e) {}
+    setActiveShift(null);
+    setShowEndShiftModal(false);
+    setShiftActualCash('');
+    setShiftNotes('');
+    forceLogout();
+    showToast('Shift diakhiri. Silakan login kembali.');
+  };
 
   const addToCart = useCallback((product, variant = null) => {
     setCart(prev => {
@@ -345,7 +403,6 @@ function App() {
     }
   };
 
-  // === ADD PRODUCT ===
   const handleAddProduct = async (e) => {
     e.preventDefault();
     if (!formData.name || !formData.price || !formData.stock) return;
@@ -361,7 +418,6 @@ function App() {
     }
   };
 
-  // === EXPORT MENU ===
   const exportMenu = () => {
     if (products.length === 0) { customAlert('Export', 'Tidak ada produk untuk diekspor.'); return; }
     const exportData = products.map(({ name, price, stock, category, variants, image }) => ({ name, price, stock, category, variants, image }));
@@ -375,7 +431,6 @@ function App() {
     showToast(`${exportData.length} produk berhasil diekspor!`);
   };
 
-  // === IMPORT MENU ===
   const importMenu = (e) => {
     const file = e.target.files[0];
     if (!file) return;
@@ -384,14 +439,10 @@ function App() {
       try {
         const data = JSON.parse(ev.target.result);
         if (!Array.isArray(data)) throw new Error('Format tidak valid');
-        const required = ['name', 'price', 'stock'];
-        const invalid = data.find(item => required.some(k => item[k] === undefined));
-        if (invalid) throw new Error('Kolom name/price/stock wajib ada di setiap item');
         customConfirm(
           'Import Menu',
-          `Akan mengimpor ${data.length} produk. Pilih mode:\n• OK = Tambah ke menu yang ada\n• Batalkan = Hanya ganti (hapus semua dulu)`,
+          `Akan mengimpor ${data.length} produk. Pilih mode: OK untuk Tambah.`,
           async () => {
-            // Mode: Tambah (merge)
             const inserts = data.map(p => ({
               name: p.name, price: parseInt(p.price) || 0, stock: parseInt(p.stock) || 0,
               category: p.category || 'Umum', variants: p.variants || '', image: p.image || ''
@@ -409,12 +460,10 @@ function App() {
     reader.readAsText(file);
   };
 
-  // === HOLD / RESUME ORDER ===
   const holdCurrentOrder = useCallback(() => {
     if (cart.length === 0) return;
     setHeldOrders(prev => [...prev, { id: Date.now(), timestamp: new Date().toISOString(), customerName: customerName || 'Umum', items: [...cart], total: cart.reduce((a,i) => a + i.price*i.qty, 0), notes: transactionNotes }]);
     setCart([]); setCustomerName(''); setTransactionNotes(''); setMemberPhone(''); setActiveMember(null);
-    setCheckoutKey(k => k + 1);
     showToast('Pesanan berhasil ditahan!');
   }, [cart, customerName, transactionNotes, showToast]);
 
@@ -431,34 +480,16 @@ function App() {
     showToast('Pesanan yang ditahan dihapus.');
   }, [showToast]);
 
-  const currentTaxRate = parseInt(settings.tax_rate ?? settings.taxRate) || 0;
-  const currentMemberDiscount = parseInt(settings.member_discount ?? settings.memberDiscount) || 0;
-  const subtotal = cart.reduce((acc, i) => acc + ((parseFloat(i.price) || 0) * (parseInt(i.qty) || 0)), 0);
-  const taxAmount = subtotal * (currentTaxRate / 100);
-  const discount = activeMember ? subtotal * (currentMemberDiscount / 100) : 0;
-
-  // Points calculation
-  const isPointsEnabled = settings.points_enabled === true;
-  const pointsPerRupiah = parseInt(settings.points_per_rupiah) || 1000;
-  const pointsValue = parseInt(settings.points_value) || 500;
-  const maxRedeemable = activeMember ? (parseInt(activeMember.points) || 0) : 0;
-  const pointsDiscount = (usePoints && isPointsEnabled && activeMember) ? (pointsToRedeem * pointsValue) : 0;
-  const earnedPoints = isPointsEnabled ? Math.floor(subtotal / pointsPerRupiah) : 0;
-
-  const total = subtotal + taxAmount - discount - pointsDiscount;
-
   const handleCheckout = useCallback(async () => {
     if (cart.length === 0 || isProcessing) return;
     setIsProcessing(true);
     
-    // Cash: show calculator first
     if (paymentMethod === 'Cash' && !showCashCalc && !showQRISModal) {
       setShowCashCalc(true);
       setIsProcessing(false);
       return;
     }
 
-    // QRIS: show QR modal first
     if (paymentMethod === 'QRIS' && !showQRISModal) {
       setShowQRISModal(true);
       setIsProcessing(false);
@@ -472,7 +503,7 @@ function App() {
         subtotal: subtotal,
         tax: taxAmount,
         discount: discount,
-        points_redeemed: (usePoints && isPointsEnabled) ? pointsToRedeem : 0,
+        points_redeemed: usePoints ? pointsToRedeem : 0,
         points_discount: pointsDiscount,
         points_earned: earnedPoints,
         customerName: customerName || `Cust ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
@@ -489,19 +520,11 @@ function App() {
       if (error) throw error;
       const savedTransaction = data[0];
       
-      // Update member points if points system is enabled
-      if (isPointsEnabled && activeMember) {
-        const currentPoints = parseInt(activeMember.points) || 0;
-        const newPoints = currentPoints - pointsToRedeem + earnedPoints;
+      if (activeMember) {
+        const newPoints = (parseInt(activeMember.points) || 0) - pointsToRedeem + earnedPoints;
         await supabase.from('members').update({ points: Math.max(0, newPoints) }).eq('id', activeMember.id);
       }
 
-      // Notify Kitchen (via Real-time, but BroadcastChannel still used for same-browser sync)
-      const kitchenChannel = new BroadcastChannel('kitchen_display');
-      kitchenChannel.postMessage({ type: 'NEW_ORDER', order: savedTransaction });
-      kitchenChannel.close();
-
-      // Update stok secara sekuensial di Supabase
       for (const item of cart) {
         const product = products.find(p => p.id === item.id);
         if (product) {
@@ -509,156 +532,28 @@ function App() {
         }
       }
       
-      // Kirim data ke Customer Display DULU sebelum hapus cart
       setLastTransaction(savedTransaction);
       setShowReceipt(true);
 
-      // Beri jeda sedikit agar BroadcastChannel sempat mengirim data terakhir
       setTimeout(() => {
         setCart([]);
         setCustomerName('');
         setMemberPhone('');
         setActiveMember(null);
         setShowQRISModal(false);
-        setActiveTransactionId(null);
         setIsProcessing(false);
         setShowCashCalc(false);
         setTransactionNotes('');
         setUsePoints(false);
         setPointsToRedeem(0);
-        
-        fetchProducts(); 
-        fetchTransactions();
-        fetchMembers();
-        setCheckoutKey(k => k + 1);
+        fetchProducts(); fetchTransactions(); fetchMembers();
       }, 500);
       
     } catch (err) {
-      console.error('Checkout Error:', err?.message || err?.details || err);
       customAlert('Error', `Gagal memproses transaksi: ${err?.message || 'Unknown error'}`);
       setIsProcessing(false);
     }
-  }, [cart, customerName, activeMember, paymentMethod, transactionNotes, discount, activeCashier, activeCaptain, showToast, total, showCashCalc, showQRISModal, isProcessing]);
-
-  // Sync with Customer Display
-  useEffect(() => {
-    const channel = new BroadcastChannel('customer_display');
-    channel.postMessage({ 
-      cart, 
-      subtotal: subtotal, 
-      taxAmount: taxAmount, 
-      discount: discount,
-      pointsDiscount: pointsDiscount,
-      total: total, 
-      storeName: settings.storeName,
-      welcomeText: settings.welcomeText || 'Selamat Datang / Welcome',          
-      customerName: customerName || '',
-      isDark,
-      themeColor: rgbToHex(rgb.r, rgb.g, rgb.b),
-      isCustomerDisplayOn: settings.isCustomerDisplayOn !== false,
-      customerViewMode: customerViewMode,
-      products: products,
-      displayTemplate: settings.displayTemplate,
-      showReceipt: showReceipt,
-      showQRIS: showQRISModal,
-      qrisData: settings.qrisImage,
-      isLoadingQR: false,
-      lastTransaction: lastTransaction,
-      storeAddress: settings.storeAddress,
-      cashierName: activeCashier
-    });
-    return () => channel.close();
-  }, [cart, activeMember, settings, customerName, isDark, customerViewMode, products, showReceipt, lastTransaction, showQRISModal, rgb, activeCashier, subtotal, taxAmount, discount, pointsDiscount, total]);
-
-  useEffect(() => {
-    const findMember = async () => {
-      if (memberPhone.length >= 10) {
-        const { data, error } = await supabase.from('members').select('*').eq('phone', memberPhone).maybeSingle();
-        if (!error) setActiveMember(data || null);
-      } else {
-        setActiveMember(null);
-      }
-      // Reset points when member changes
-      setUsePoints(false);
-      setPointsToRedeem(0);
-    };
-    findMember();
-  }, [memberPhone]);
-
-  useEffect(() => {
-    const handleGlobalShortcuts = (e) => {
-      // Focus Search: Ctrl + K
-      if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-        e.preventDefault();
-        document.querySelector('.search-box')?.focus();
-      }
-      
-      // Hold Order: Ctrl + H
-      if ((e.ctrlKey || e.metaKey) && e.key === 'h' && activeTab === 'pos') {
-        e.preventDefault();
-        holdCurrentOrder();
-      }
-
-      // Print Receipt: Ctrl + P
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p' && showReceipt) {
-        e.preventDefault();
-        window.print();
-      }
-
-      // Tab Switching: Ctrl + 1-5
-      if ((e.ctrlKey || e.metaKey) && e.key >= '1' && e.key <= '5') {
-        const tabs = ['dashboard', 'pos', 'stock', 'members', 'history'];
-        setActiveTab(tabs[parseInt(e.key) - 1]);
-      }
-
-      // Quick Checkout / Confirm: Enter
-      if (e.key === 'Enter') {
-        if (dialog) {
-          if (dialog.type === 'prompt' && promptValue !== dialog.requiredText) return;
-          if (dialog.onConfirm) dialog.onConfirm();
-          setDialog(null);
-          setTimeout(() => document.querySelector('.search-box')?.focus(), 100);
-          return;
-        }
-        // Only trigger checkout if no modals are open and we are in POS tab
-        if (activeTab === 'pos' && cart.length > 0 && !isProcessing && !showReceipt && !showCashCalc && !showQRISModal) {
-          // If not in input/textarea (except search)
-          if (document.activeElement.tagName !== 'INPUT' || document.activeElement.classList.contains('search-box')) {
-            handleCheckout();
-          }
-        }
-      }
-
-      // Close Modals & Dialogs: Escape
-      if (e.key === 'Escape') {
-        if (dialog) {
-          setDialog(null);
-          return;
-        }
-        setShowCashCalc(false);
-        setShowQRISModal(false);
-        setEditingProduct(null);
-        setProductToSelectVariant(null);
-        if (showReceipt) setShowReceipt(false);
-      }
-    };
-
-    window.addEventListener('keydown', handleGlobalShortcuts);
-    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
-  }, [activeTab, cart.length, isProcessing, showReceipt, showCashCalc, total, holdCurrentOrder, handleCheckout, dialog, promptValue]);
-
-  useEffect(() => {
-    const init = async () => {
-
-      fetchProducts();
-      fetchSettings();
-      fetchTransactions();
-      fetchMembers();
-    };
-    init();
-  }, []);
-
-
+  }, [cart, customerName, activeMember, paymentMethod, transactionNotes, discount, activeCashier, total, showCashCalc, showQRISModal, isProcessing]);
 
   const sendToKitchen = async () => {
     if (cart.length === 0) return;
@@ -666,151 +561,73 @@ function App() {
       const transaction = {
         timestamp: new Date().toISOString(),
         total: total,
-        subtotal: subtotal,
-        tax: taxAmount,
-        discount: discount,
-        customerName: customerName || `Cust ${new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })}`,
-        member_phone: activeMember ? activeMember.phone : null,
+        customerName: customerName || 'Umum',
         payment_method: 'Dapur (Pending)',
         items: cart.map(item => ({ name: item.name, price: item.price, qty: item.qty, selectedVariant: item.selectedVariant })),
         notes: transactionNotes,
         status: 'preparing',
-        cashier_name: activeCashier || 'Admin',
-        captain_name: activeCaptain || 'Self'
+        cashier_name: activeCashier || 'Admin'
       };
       const { data, error } = await supabase.from('transactions').insert(transaction).select();
-      if (error) throw error;
-      const id = data[0].id;
-      
-      const kitchenChannel = new BroadcastChannel('kitchen_display');
-      kitchenChannel.postMessage({ type: 'NEW_ORDER', order: { ...transaction, id } });
-      kitchenChannel.close();
-
-      showToast('Pesanan dikirim ke Dapur!');
-      setCart([]);
-      setCustomerName('');
-      setTransactionNotes('');
-      setActiveCaptain('');
-    } catch (err) {
-      console.error('Kitchen Error:', err?.message || err?.details || err);
-      showToast(`Gagal mengirim ke dapur: ${err?.message || ''}`, 'error');
-    }
+      if (!error) {
+        const bc = new BroadcastChannel('kitchen_display');
+        bc.postMessage({ type: 'NEW_ORDER', order: data[0] });
+        bc.close();
+        showToast('Pesanan dikirim ke Dapur!');
+        setCart([]);
+      }
+    } catch (err) {}
   };
 
   const exportToExcel = () => {
-    if (transactions.length === 0) {
-      customAlert('Ekspor', 'Tidak ada data transaksi untuk diekspor.');
-      return;
-    }
-
-    const dataArr = transactions.map(t => ({
-      'Tanggal & Waktu': new Date(t.timestamp).toLocaleString(),
-      'ID Pesanan': `#transaction-${t.id}`,
-      'Nama Pelanggan': t.customerName,
-      'Status Member': t.memberId ? 'Ya' : 'Tidak',
-      'Total Bayar': t.total
-    }));
-
+    if (transactions.length === 0) return;
+    const dataArr = transactions.map(t => ({ 'Waktu': new Date(t.timestamp).toLocaleString(), 'ID': t.id, 'Pelanggan': t.customerName, 'Total': t.total }));
     const worksheet = XLSX.utils.json_to_sheet(dataArr);
     const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan Penjualan");
-    
-    // Auto-size columns
-    const max_width = dataArr.reduce((w, r) => Math.max(w, r['Nama Pelanggan'].length), 15);
-    worksheet["!cols"] = [ { wch: 25 }, { wch: 15 }, { wch: max_width + 5 }, { wch: 15 }, { wch: 15 } ];
-
-    XLSX.writeFile(workbook, `Laporan_Penjualan_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.utils.book_append_sheet(workbook, worksheet, "Laporan");
+    XLSX.writeFile(workbook, `Laporan_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  const handleLogin = (name) => {
-    setActiveCashier(name);
-    setIsLoggedIn(true);
-    
-    // Windows are now opened automatically on app startup as per latest request.
-    // If they were closed, they can be re-opened from the Settings menu.
-  };
 
-  const handleLogout = () => {
-    if (activeShift) {
-      setShowEndShiftModal(true);
-    } else {
-      customConfirm('Ganti Kasir', 'Apakah Anda yakin ingin mengganti kasir (Log Out)?', () => {
-        setIsLoggedIn(false);
-        setActiveCashier('');
-        localStorage.removeItem('activeCashier');
-      });
-    }
-  };
 
-  const forceLogout = () => {
-    setIsLoggedIn(false);
-    setActiveCashier('');
-    localStorage.removeItem('activeCashier');
-  };
+  useEffect(() => {
+    const channel = new BroadcastChannel('customer_display');
+    channel.postMessage({ 
+      cart, subtotal, taxAmount, discount, pointsDiscount, total, 
+      storeName: settings.storeName, welcomeText: settings.welcomeText,
+      customerName, isDark, themeColor: settings.themeColor,
+      isCustomerDisplayOn: settings.isCustomerDisplayOn,
+      customerViewMode, products, displayTemplate: settings.displayTemplate,
+      showReceipt, showQRIS: showQRISModal, qrisData: settings.qrisImage,
+      lastTransaction, storeAddress: settings.storeAddress, cashierName: activeCashier
+    });
+    return () => channel.close();
+  }, [cart, settings, customerName, isDark, customerViewMode, products, showReceipt, lastTransaction, showQRISModal, activeCashier, subtotal, taxAmount, discount, pointsDiscount, total]);
 
-  const getShiftSummary = () => {
-    if (!activeShift) return null;
-    const shiftTx = transactions.filter(t => 
-      t.cashier_name === activeShift.cashierName && 
-      new Date(t.timestamp) >= new Date(activeShift.startTime)
-    );
-    const totalCash = shiftTx.filter(t => t.payment_method === 'Cash').reduce((sum, t) => sum + t.total, 0);
-    const totalQRIS = shiftTx.filter(t => t.payment_method === 'QRIS').reduce((sum, t) => sum + t.total, 0);
-    const totalDebit = shiftTx.filter(t => t.payment_method === 'Debit').reduce((sum, t) => sum + t.total, 0);
-    const expectedCash = activeShift.startingCash + totalCash;
-    
-    return { totalCash, totalQRIS, totalDebit, expectedCash, transactionCount: shiftTx.length };
-  };
-
-  const handleEndShift = async () => {
-    const summary = getShiftSummary();
-    if (!summary) return;
-    
-    const actual = parseInt(shiftActualCash) || 0;
-    const difference = actual - summary.expectedCash;
-    
-    const shiftRecord = {
-      ...activeShift,
-      endTime: new Date().toISOString(),
-      expectedCash: summary.expectedCash,
-      actualCash: actual,
-      totalCash: summary.totalCash,
-      totalQRIS: summary.totalQRIS,
-      totalDebit: summary.totalDebit,
-      difference,
-      notes: shiftNotes
+  useEffect(() => {
+    const findMember = async () => {
+      if (memberPhone.length >= 10) {
+        const { data } = await supabase.from('members').select('*').eq('phone', memberPhone).maybeSingle();
+        setActiveMember(data || null);
+      } else setActiveMember(null);
+      setUsePoints(false); setPointsToRedeem(0);
     };
+    findMember();
+  }, [memberPhone]);
 
-    // Save to local Dexie DB
-    try {
-      await db.shifts.add(shiftRecord);
-    } catch (e) {
-      console.error('Failed to save shift to Dexie:', e);
-    }
-
-    // Attempt to save to Supabase (if table exists)
-    try {
-      await supabase.from('shifts').insert({
-        cashier_name: shiftRecord.cashierName,
-        start_time: shiftRecord.startTime,
-        end_time: shiftRecord.endTime,
-        starting_cash: shiftRecord.startingCash,
-        expected_cash: shiftRecord.expectedCash,
-        actual_cash: shiftRecord.actualCash,
-        difference: shiftRecord.difference,
-        notes: shiftRecord.notes
-      });
-    } catch (e) {
-      console.log('No shifts table in supabase or insert failed.', e);
-    }
-
-    setActiveShift(null);
-    setShowEndShiftModal(false);
-    setShiftActualCash('');
-    setShiftNotes('');
-    forceLogout();
-    showToast('Shift diakhiri. Silakan login kembali.');
-  };
+  useEffect(() => {
+    const handleGlobalShortcuts = (e) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'k') { e.preventDefault(); document.querySelector('.search-box')?.focus(); }
+      if ((e.ctrlKey || e.metaKey) && e.key === 'h' && activeTab === 'pos') { e.preventDefault(); holdCurrentOrder(); }
+      if (e.key === 'Enter') {
+        if (dialog) { dialog.onConfirm?.(); setDialog(null); return; }
+        if (activeTab === 'pos' && cart.length > 0 && !isProcessing && !showReceipt && !showCashCalc && !showQRISModal) handleCheckout();
+      }
+      if (e.key === 'Escape') { setDialog(null); setShowCashCalc(false); setShowQRISModal(false); setEditingProduct(null); setProductToSelectVariant(null); setShowReceipt(false); }
+    };
+    window.addEventListener('keydown', handleGlobalShortcuts);
+    return () => window.removeEventListener('keydown', handleGlobalShortcuts);
+  }, [activeTab, cart.length, isProcessing, showReceipt, showCashCalc, total, holdCurrentOrder, handleCheckout, dialog]);
 
   const handleExit = () => {
     customConfirm('Keluar', 'Apakah Anda yakin ingin keluar dari aplikasi?', () => {
@@ -828,6 +645,31 @@ function App() {
     setIsDark(newMode);
     updateSetting('is_dark', newMode);
   };
+
+  if (isInitializing) {
+    return (
+      <div style={{height: '100vh', width: '100vw', background: '#020617', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center'}}>
+        <div style={{position: 'relative', width: '120px', height: '120px', marginBottom: '2.5rem'}}>
+          <div className="splash-ring" style={{position: 'absolute', inset: 0, border: '4px solid var(--primary)', borderRadius: '40px', opacity: 0.1}}></div>
+          <div className="splash-ring-inner" style={{position: 'absolute', inset: '10px', border: '4px solid var(--primary)', borderRadius: '32px', opacity: 0.2}}></div>
+          <div style={{position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--primary)'}}>
+            <svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+          </div>
+        </div>
+        <h1 style={{color: 'white', fontSize: '2.5rem', fontWeight: 900, letterSpacing: '-0.02em', marginBottom: '0.5rem'}}>LUMA POS</h1>
+        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem', color: 'rgba(255,255,255,0.4)', fontWeight: 700, letterSpacing: '0.1em', fontSize: '0.8rem'}}>
+          <div className="splash-loader"></div> INITIALIZING SYSTEM
+        </div>
+        <style>{`
+          @keyframes splash-spin { to { transform: rotate(360deg); } }
+          .splash-loader { width: 12px; height: 12px; border: 2px solid rgba(255,255,255,0.1); border-top-color: var(--primary); border-radius: 50%; animation: splash-spin 0.8s linear infinite; }
+          .splash-ring { animation: pulse 2s infinite ease-in-out; }
+          .splash-ring-inner { animation: pulse 2s infinite ease-in-out 0.5s; }
+          @keyframes pulse { 0%, 100% { transform: scale(1); opacity: 0.1; } 50% { transform: scale(1.1); opacity: 0.3; } }
+        `}</style>
+      </div>
+    );
+  }
 
   if (!isLoggedIn) {
     return (
@@ -1753,7 +1595,7 @@ function App() {
                 <IconPrinter /> CETAK STRUK
               </button>
               <button 
-                onClick={() => { setShowReceipt(false); if (activeTab === 'pos') window.location.reload(); }}
+                onClick={() => setShowReceipt(false)}
                 style={{flex: 1, padding: '1.2rem', background: '#f3f4f6', color: '#000', borderRadius: '16px', fontWeight: 700}}
               >
                 TUTUP

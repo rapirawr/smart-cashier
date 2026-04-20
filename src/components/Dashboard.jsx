@@ -119,7 +119,7 @@ function Dashboard({ settings }) {
         productMap[key].revenue += item.qty * item.price;
       });
     });
-    return Object.values(productMap).sort((a, b) => b.revenue - a.revenue).slice(0, 8);
+    return Object.values(productMap).sort((a, b) => b.revenue - a.revenue).slice(0, 4);
   }, [transactions]);
 
   const paymentBreakdown = useMemo(() => {
@@ -331,13 +331,13 @@ function Dashboard({ settings }) {
           <h3 style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}><BarChart3 size={20} /> Pendapatan per Produk</h3>
           {topProducts.length > 0 ? (
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={topProducts.slice(0, 6)} layout="vertical">
+              <BarChart data={topProducts.slice(0, 4)} layout="vertical">
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                 <XAxis type="number" tick={{fill: 'var(--text-muted)', fontSize: 11}} tickFormatter={v => `${(v/1000).toFixed(0)}k`} />
                 <YAxis dataKey="name" type="category" width={100} tick={{fill: 'var(--text-main)', fontSize: 12, fontWeight: 600}} />
                 <Tooltip formatter={(value) => formatCurrency(value)} />
                 <Bar dataKey="revenue" radius={[0, 8, 8, 0]}>
-                  {topProducts.slice(0, 6).map((_, i) => (
+                  {topProducts.slice(0, 4).map((_, i) => (
                     <Cell key={i} fill={COLORS[i % COLORS.length]} />
                   ))}
                 </Bar>

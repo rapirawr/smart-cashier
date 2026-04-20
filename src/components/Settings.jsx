@@ -358,7 +358,7 @@ function Settings({ settings, updateSetting, rgb, setRgb, isRgbUserChange, rgbTo
                     ['Versi', pkg.version],
                     ['Platform', 'Electron + React'],
                     ['Database', 'Supabase'],
-                    ['Pembuat', pkg.author || 'Developer'],
+                    ['Developer', pkg.author || 'Developer'],
                     ['Lisensi', 'Proprietary'],
                   ].map(([label, value]) => (
                     <div key={label} style={{padding: '1rem', background: 'var(--bg-card)', borderRadius: '12px', border: '1px solid var(--border)'}}>
